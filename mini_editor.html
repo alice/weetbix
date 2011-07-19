@@ -1,0 +1,49 @@
+<!DOCTYPE html public>
+<html>
+<head>
+  <style>
+    .content {
+      margin: 20px;
+    }
+
+    .editor {
+      border: 1px solid black;
+      padding: 2px;
+    }
+  </style>
+</head>
+<body>
+  <div class="content">
+    <div id="editor" class="editor" style="width: 500px">
+      Some text in the editor.
+    </div>
+  </div>
+  <script>
+    document.addEventListener("keydown", cursor);
+    document.addEventListener("keypress", type);
+
+    function cursor(event) {
+      var editor = document.getElementById("editor");
+
+      if (event.which == 8) {
+        event.preventDefault();
+        editor.innerHTML = editor.innerHTML.substring(0, editor.innerHTML.length - 1);
+      }
+
+      event.stopPropagation();
+      return;
+    }
+
+    function type(event) {
+      if (!event.charCode)
+        return;
+
+      var char = String.fromCharCode(event.charCode);
+      currentText = editor.innerHTML;
+      editor.innerHTML = currentText + char;
+
+      event.stopPropagation();
+    }
+  </script>
+</body>
+</html>
