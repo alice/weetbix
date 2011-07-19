@@ -18,7 +18,7 @@
 </head>
 <body>
   <div class="content">
-    <div id="editor" class="editor" style="width: 500px">
+    <div id="editor" class="editor" style="width: 500px" role="textbox" tabindex=0>
       Some text in the editor.
     </div>
   </div>
@@ -27,6 +27,8 @@
     document.addEventListener("keydown", cursor);
     document.addEventListener("keypress", type);
     editor.addEventListener("click", focusEditor);
+    editor.addEventListener("focus", focusEditor);
+    editor.addEventListener("blur", blurEditor);
 
     function blurEditor() {
       editor.setAttribute("focus", false);
@@ -40,12 +42,12 @@
       if (!editor.getAttribute("focus"))
         return;
 
-      if (event.which == 8) {
+      if (event.keyCode == 8) {
         event.preventDefault();
         editor.innerHTML = editor.innerHTML.substring(0, editor.innerHTML.length - 1);
       }
 
-      if (event.which == 13) {
+      if (event.keyCode == 13) {
         blurEditor();
       }
 
