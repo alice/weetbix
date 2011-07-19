@@ -7,8 +7,12 @@
     }
 
     .editor {
-      border: 1px solid black;
+      border: 1px dotted grey;
       padding: 2px;
+    }
+
+    .editor[focus = true] {
+      border: 1px solid black;
     }
   </style>
 </head>
@@ -19,15 +23,30 @@
     </div>
   </div>
   <script>
+    var editor = document.getElementById("editor");
     document.addEventListener("keydown", cursor);
     document.addEventListener("keypress", type);
+    editor.addEventListener("click", focusEditor);
+
+    function blurEditor() {
+      editor.setAttribute("focus", false);
+    }
+
+    function focusEditor() {
+      editor.setAttribute("focus", true);
+    }
 
     function cursor(event) {
-      var editor = document.getElementById("editor");
+      if (!editor.getAttribute("focus"))
+        return;
 
       if (event.which == 8) {
         event.preventDefault();
         editor.innerHTML = editor.innerHTML.substring(0, editor.innerHTML.length - 1);
+      }
+
+      if (event.which == 13) {
+        blurEditor();
       }
 
       event.stopPropagation();
@@ -35,6 +54,9 @@
     }
 
     function type(event) {
+      if (!editor.getAttribute("focus"))
+        return;
+
       if (!event.charCode)
         return;
 
