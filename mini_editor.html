@@ -11,21 +11,102 @@
       padding: 2px;
     }
 
-    .editor[focus = true] {
+    .editor:focus {
       border: 1px solid black;
+    }
+
+    .caret {
+      width: 0px;
+      height: 1em;
+      border: 1px solid black;
+      position: absolute;
     }
   </style>
 </head>
 <body>
   <div class="content">
-    <div id="editor" class="editor" style="width: 500px" role="textbox" tabindex=0>
-      Some text in the editor.
-    </div>
+    <div id="editor" class="editor" style="width: 500px" role="textbox" tabindex=0>Some text in the editor.</div>
+
+    <div id="caret" class="caret" style="display: none"/>
   </div>
   <script>
     var editor = document.getElementById("editor");
     editor.addEventListener("keydown", cursor);
     editor.addEventListener("keypress", type);
+    editor.addEventListener("focus", showCaret);
+    editor.addEventListener("blur", hideCaret);
+
+    function showCaret(event) {
+      var caret = document.getElementById("caret");
+      var selection = window.getSelection();
+      if (!selection.rangeCount) {
+        console.log("rangeCount == 0");
+
+        // set selection to end of editor
+        var range = document.createRange();
+        range.selectNodeContents(editor);
+        range.collapse(false);
+        selection.addRange(range);
+      }
+
+      var range = selection.getRangeAt(0);
+      if (!range) {
+        console.log("no range");
+        return;
+      }
+
+      var x, y, rect;
+      if (range.startOffset != range.endOffset || range.startContainer != range.endContainer) {
+        rect = range.getBoundingClientRect();
+        if (!rect) {
+          console.log("no rect");
+          return;
+        }
+
+        x = rect.right + window.pageXOffset;
+      } else {
+        // create a new selection which is >0 width and get the position from that
+        var node = range.startContainer;
+        var pos = range.startOffset;
+        var left = pos;
+        var right = pos;
+        var max = node.data.length;
+        var newRange = document.createRange();
+
+        while (left > 0 || right < max) {
+          if (left > 0) {
+            left--;
+            newRange.setStart(node, left);
+            newRange.setEnd(node, pos);
+            rect = newRange.getBoundingClientRect();
+            if (rect) {
+              x = rect.right;
+              break;
+            }
+          }
+          if (right < max) {
+            right++;
+            newRange.setStart(node, pos);
+            newRange.setEnd(node, right);
+            rect = newRange.getBoundingClientRect();
+            if (rect) {
+              x = rect.left;
+              break;
+            }
+          }
+        }
+      }
+      y = rect.top + window.pageYOffset;
+
+      caret.style.left = x + 'px';
+      caret.style.top = y + 'px';
+      caret.style.display = 'block';
+    }
+
+    function hideCaret(event) {
+      var caret = document.getElementById("caret");
+      caret.style.display = 'none';
+    }
 
     function cursor(event) {
       if (event.keyCode == 8) {
