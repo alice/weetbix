@@ -112,6 +112,10 @@
       if (event.keyCode == 8) {
         event.preventDefault();
         editor.innerHTML = editor.innerHTML.substring(0, editor.innerHTML.length - 1);
+        if (editor.innerHTML.length == 0) {
+          editor.innerHTML = '&nbsp;';
+        }
+        showCaret();
       }
 
       if (event.keyCode == 13) {
@@ -129,6 +133,7 @@
       var char = String.fromCharCode(event.charCode);
       currentText = editor.innerHTML;
       editor.innerHTML = currentText + char;
+      showCaret()
 
       event.stopPropagation();
     }
