@@ -44,7 +44,7 @@
 
     editor.addEventListener("keydown", cursor);
     editor.addEventListener("keypress", type);
-    editor.addEventListener("focus", positionAndShowCaret);
+    editor.addEventListener("focus", function() { setTimeout(positionAndShowCaret.bind(0, event), 0); });
     editor.addEventListener("click", positionAndShowCaret);
     editor.addEventListener("blur", hideCaret);
 
@@ -56,11 +56,13 @@
     function positionAndShowCaret(event) {
       positionCaret(event);
       window.setTimeout(function() {
+        console.log("Showing caret for " + event.type + " event.");
         showCaret();
-      }, 100);
+      }, 0);
     }
 
     function positionCaret(event) {
+      console.log("Positioning caret for " + event.type + " event.");
       var caret = document.getElementById("caret");
       var selection = window.getSelection();
       if (!selection.rangeCount) {
@@ -129,6 +131,7 @@
 
       caret.style.left = caretX + 'px';
       caret.style.top = caretY + 'px';
+      console.log("Done positioning caret for " + event.type + " event.");
     }
 
     function showCaret(event) {
