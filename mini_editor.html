@@ -25,23 +25,45 @@
 </head>
 <body>
   <div class="content">
+    <h2><code>role="textbox"</code> test page</h2>
     <div id="editor" class="editor" style="width: 500px" role="textbox" tabindex=0>Some text in the editor.</div>
-
+    <p>Features yet to be implemented:
+      <ul>
+        <li><span style="text-decoration: line-through;">Cursor anywhere but at the end of text</span>
+        <li>Move cursor using arrow keys
+        <li>Cursor anywhere but at the end of text actually modifies text at that position
+        <li>Selection started within text box doesn't extend beyond text box
+        <li>Delete/backspace deletes selection
+        <li>...
+      </ul>
+    </p>
     <div id="caret" class="caret" style="display: none"/>
   </div>
   <script>
     var editor = document.getElementById("editor");
+
     editor.addEventListener("keydown", cursor);
     editor.addEventListener("keypress", type);
-    editor.addEventListener("focus", showCaret);
+    editor.addEventListener("focus", positionAndShowCaret);
+    editor.addEventListener("click", positionAndShowCaret);
     editor.addEventListener("blur", hideCaret);
 
-    function showCaret(event) {
+    var cursorOffset = 0;
+    var caretX = 0;
+    var caretY = 0;
+    var cursorActive = false;
+
+    function positionAndShowCaret(event) {
+      positionCaret(event);
+      window.setTimeout(function() {
+        showCaret();
+      }, 100);
+    }
+
+    function positionCaret(event) {
       var caret = document.getElementById("caret");
       var selection = window.getSelection();
       if (!selection.rangeCount) {
-        console.log("rangeCount == 0");
-
         // set selection to end of editor
         var range = document.createRange();
         range.selectNodeContents(editor);
@@ -55,7 +77,7 @@
         return;
       }
 
-      var x, y, rect;
+      var x, rect;
       if (range.startOffset != range.endOffset || range.startContainer != range.endContainer) {
         rect = range.getBoundingClientRect();
         if (!rect) {
@@ -64,6 +86,8 @@
         }
 
         x = rect.right + window.pageXOffset;
+        cursorOffset = range.endOffset;
+        console.log("cursorOffset=" + cursorOffset);
       } else {
         // create a new selection which is >0 width and get the position from that
         var node = range.startContainer;
@@ -81,6 +105,8 @@
             rect = newRange.getBoundingClientRect();
             if (rect) {
               x = rect.right;
+              cursorOffset = newRange.endOffset;
+              console.log("cursorOffset=" + cursorOffset);
               break;
             }
           }
@@ -91,20 +117,29 @@
             rect = newRange.getBoundingClientRect();
             if (rect) {
               x = rect.left;
+              cursorOffset = newRange.startOffset;
+              console.log("cursorOffset=" + cursorOffset);
               break;
             }
           }
         }
       }
-      y = rect.top + window.pageYOffset;
+      caretX = x;
+      caretY = rect.top + window.pageYOffset;
 
-      caret.style.left = x + 'px';
-      caret.style.top = y + 'px';
+      caret.style.left = caretX + 'px';
+      caret.style.top = caretY + 'px';
+    }
+
+    function showCaret(event) {
+      var caret = document.getElementById("caret");
+      cursorActive = true;
       caret.style.display = 'block';
     }
 
     function hideCaret(event) {
       var caret = document.getElementById("caret");
+      cursorActive = false;
       caret.style.display = 'none';
     }
 
@@ -115,11 +150,11 @@
         if (editor.innerHTML.length == 0) {
           editor.innerHTML = '&nbsp;';
         }
-        showCaret();
+        positionCaret();
       }
 
       if (event.keyCode == 13) {
-        blurEditor();
+        editor.blur();
       }
 
       event.stopPropagation();
@@ -133,7 +168,7 @@
       var char = String.fromCharCode(event.charCode);
       currentText = editor.innerHTML;
       editor.innerHTML = currentText + char;
-      showCaret()
+      positionCaret()
 
       event.stopPropagation();
     }
