@@ -50,6 +50,10 @@
     editor.addEventListener("focus", function() { setTimeout(
       positionAndShowCaret.bind(0, event), 0);
     });
+    editor.addEventListener("click", function() { setTimeout(
+      positionAndShowCaret.bind(0, event), 0);
+    });
+
     editor.addEventListener("blur", hideCaret);
 
     var cursorOffset = -1;
@@ -72,8 +76,14 @@
         setSelectionAndCaretPositionFromOffset(cursorOffset);
     }
 
-    function setSelectionAndCaretPositionFromOffset() {
-
+    function setSelectionAndCaretPositionFromOffset(offset) {
+      var range = document.createRange();
+      range.setStart(editor.firstChild, offset);
+      range.setEnd(editor.firstChild, offset);
+      var selection = window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+      setCaretPositionFromSelection();
     }
 
     function setCaretPositionFromSelection() {
