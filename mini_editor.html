@@ -21,6 +21,10 @@
       border: 1px solid black;
       position: absolute;
     }
+
+    .strikethrough {
+      text-decoration: line-through;
+    }
   </style>
 </head>
 <body>
@@ -29,12 +33,18 @@
     <div id="editor" class="editor" style="width: 500px" role="textbox" tabindex=0>Some text in the editor.</div>
     <p>Features yet to be implemented:
       <ul>
-        <li><span style="text-decoration: line-through;">Cursor anywhere but at the end of text</span>
-        <li>Move cursor using arrow keys
-        <li>Cursor anywhere but at the end of text actually modifies text at that position
+        <li class="strikethrough">Cursor anywhere but at the end of text
+        <li class="strikethrough">Move cursor using arrow keys
+        <li class="strikethrough">Cursor anywhere but at the end of text actually modifies text at that position
         <li>Selection started within text box doesn't extend beyond text box
         <li>Delete/backspace deletes selection
         <li>...
+      </ul>
+    </p>
+    <p>Known bugs:
+      <ul>
+	<li class="strikethrough">After cursor placed by mouse click, text typed still goes to end of line
+	<li class="strikethrough">Second click does not move cursor.
       </ul>
     </p>
     <div id="caret" class="caret" style="display: none"/>
@@ -50,8 +60,9 @@
     editor.addEventListener("focus", function() { setTimeout(
       positionAndShowCaret.bind(0, event), 0);
     });
-    editor.addEventListener("click", function() { setTimeout(
-      positionAndShowCaret.bind(0, event), 0);
+    editor.addEventListener("click", function() { 
+      console.log("click");
+      setTimeout(positionAndShowCaret.bind(0, event), 0);
     });
 
     editor.addEventListener("blur", hideCaret);
@@ -63,7 +74,11 @@
     var textLength = editor.textContent.length;
 
     function positionAndShowCaret(event) {
-      positionCaret(event);
+      if (event.type == "click")
+        setCaretPositionFromSelection();
+      else
+        positionCaret(event);
+
       window.setTimeout(function() {
         showCaret();
       }, 0);
@@ -173,14 +188,28 @@
     }
 
     function cursor(event) {
+      // backspace
       if (event.keyCode == 8) {
         event.preventDefault();
         backspace();
         positionCaret();
       }
 
+      // return
       if (event.keyCode == 13) {
         editor.blur();
+      }
+
+      // left
+      if (event.keyCode == 37 && cursorOffset > 0) {
+	cursorOffset--;
+	setSelectionAndCaretPositionFromOffset(cursorOffset);
+      }
+
+      // right
+      if (event.keyCode == 39 && cursorOffset < textLength) {
+	cursorOffset++;
+        setSelectionAndCaretPositionFromOffset(cursorOffset);
       }
 
       event.stopPropagation();
@@ -220,8 +249,14 @@
 
       var char = String.fromCharCode(event.charCode);
       currentText = editor.textContent;
-      editor.textContent = currentText + char;
-      positionCaret()
+      if (cursorOffset == textLength)
+	editor.textContent = currentText + char;
+      else
+	editor.textContent = currentText.substring(0, cursorOffset) + char + currentText.substring(cursorOffset, textLength);
+
+      textLength = editor.textContent.length;
+      cursorOffset++;
+      positionCaret();
 
       event.stopPropagation();
     }
