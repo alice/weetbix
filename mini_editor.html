@@ -105,18 +105,9 @@
 
     function setSelectionAndCaretPositionFromOffset(offset) {
       console.log("offset=" + offset);
-      var range = document.createRange();
-      range.setStart(editor.firstChild, offset);
-      range.setEnd(editor.firstChild, offset);
       var selection = window.getSelection();
-      selection.removeAllRanges();
-      selection.addRange(range);
-      range = document.getSelection().getRangeAt(0);
-      range.setStart(editor.firstChild, offset);
-      range.setEnd(editor.firstChild, offset);
-      console.log("range in setSelectionAndCaretPositionFromOffset: " + range.startOffset + ", " + range.endOffset);
-      range = window.getSelection().getRangeAt(0);
-      console.log("window.getRangeAt(0) in setSelectionAndCaretPositionFromOffset: " + range.startOffset + ", " + range.endOffset);
+      var textNode = editor.firstChild;
+      selection.setBaseAndExtent(textNode, offset, textNode, offset);
       setCaretPositionFromSelection();
     }
 
@@ -126,12 +117,9 @@
       // TODO(aboxhall): detect selection outside editor and ignore
       if (!selection.rangeCount) {
         console.log("adding range");
-        // TODO(aboxhall): use cursorOffset to create the appropriate selection
-        // set selection to end of editor
-        var range = document.createRange();
-        range.selectNodeContents(editor);
-        range.collapse(false);
-        selection.addRange(range);
+        if (cursorOffset == -1)
+          cursorOffset = textLength;
+        setSelectionAndCaretPositionFromOffset(cursorOffset);
       }
 
       var range = selection.getRangeAt(0);
@@ -139,7 +127,7 @@
         console.log("no range");
         return;
       }
-      console.log("range in setCaretPositionFromSelection: " + range.startOffset + ", " + range.endOffset);
+
       var x, rect;
       if (range.startOffset != range.endOffset ||
           range.startContainer != range.endContainer) {
@@ -237,6 +225,11 @@
 
       event.stopPropagation();
       return;
+    }
+
+    function deleteSelection() {
+      var selection = document.getSelection();
+      var range = selection.getRangeAt(0);
     }
 
     var LEFT = true;
