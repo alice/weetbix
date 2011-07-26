@@ -39,10 +39,20 @@
         <li class="strikethrough">Delete key deletes text to the right of cursor
         <li class="strikethrough">Delete/backspace deletes selection
         <li class="strikethrough">Typing replaces selection
+        <li class="strikethrough">Platform detection
+        <li>Keyboard shortcuts (mac):
+          <ul>
+            <li>Ctrl+left goes to beginning of line
+            <li>Ctrl+a goes to beginning of line
+            <li>Ctrl+right goes to end of line
+            <li>Ctrl+e goes to end of line
+            <li>Cmd+left moves left one word
+            <li>Cmd+right moves right one word
+            <li>Cmd+a selects all text
+            <li>Holding shift begins selection
+            <li>Releasing shift ends selection
+          </ul>
         <li>Selection started within text box doesn't extend beyond text box
-        <li>Home/end keys move cursor to beginning/end of line
-        <li>Select text using keyboard (Shift + arrow keys)
-        <li>Skip word using Ctrl + arrow keys (low priority)
         <li>Cursor blinking (low priority)
         <li>...
       </ul>
@@ -59,6 +69,22 @@
     <div id="caret" class="caret" style="display: none"/>
   </div>
   <script>
+    var OS = {
+      MAC: "mac",
+      WIN: "win",
+      UNKNOWN: "unknown"
+    }
+    var platform = navigator.platform;
+    var os;
+    if (platform.match(/Mac.*/))
+      os = OS.MAC;
+    else if (platform.match(/Win.*/))
+      os = OS.WIN;
+    else
+      os = OS.UNKNOWN;
+
+    console.log("os: " + os);
+
     var editor = document.getElementById("editor");
 
     editor.addEventListener("keydown", cursor);
@@ -212,12 +238,16 @@
 
       // left
       if (event.keyCode == 37 && cursorOffset > 0) {
+        // TODO(aboxhall): handle ctrl (offset -> 0) + meta (move one word)
+        // TODO(davidbarr): handle windows key combos + platform detection
         cursorOffset--;
         setSelectionAndCaretPositionFromOffset(cursorOffset);
       }
 
       // right
       if (event.keyCode == 39 && cursorOffset < textLength) {
+        // TODO(aboxhall): handle ctrl + meta
+        // TODO(davidbarr): handle windows key combos + platform detection
         cursorOffset++;
         setSelectionAndCaretPositionFromOffset(cursorOffset);
       }
@@ -238,7 +268,7 @@
 
       range.deleteContents();
       setCaretPositionFromSelection();
-      return true;
+      return true;o
     }
 
     var LEFT = true;
