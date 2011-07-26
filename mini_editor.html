@@ -239,25 +239,27 @@
       return;
     }
 
-    function backspace() {
-      console.log("before backspace; cursorOffset=" + cursorOffset + ", textLength=" + textLength);
+    var LEFT = true;
+    var RIGHT = false;
+    function deleteChar(direction) {
       if (textLength == 0)
         return;
 
-      var textContent = editor.textContent;
-      console.log("textContent='" + textContent + "'");
+      if (direction == LEFT && cursorOffset == 0)
+        return;
 
-      if (cursorOffset == textLength)
-        modifiedTextContent = textContent.substring(0, cursorOffset - 1);
-      else if (cursorOffset > 0)
-        modifiedTextContent = textContent.substring(0, cursorOffset - 1) +
-          textContent.substring(cursorOffset, textContent.length);
+      if (direction == RIGHT && cursorOffset == textLength)
+        return;
 
-      if (modifiedTextContent) {
-        textLength = modifiedTextContent.length;
-        console.log("modifiedTextContent='" + modifiedTextContent + "'");
-        editor.textContent = modifiedTextContent;
+      if (direction == LEFT) {
+        editor.firstChild.deleteData(cursorOffset - 1, 1);
         cursorOffset--;
+      } else {
+        editor.firstChild.deleteData(cursorOffset, 1);
+      }
+
+      if (editor.textContent) {
+        textLength = editor.textContent.length;
       } else {
         textLength = 0;
         console.log("empty text");
@@ -268,33 +270,12 @@
       console.log("after backspace; cursorOffset=" + cursorOffset + ", textLength=" + textLength);
     }
 
+    function backspace() {
+      deleteChar(LEFT);
+    }
+
     function del() {
-      if (textLength == 0)
-        return;
-
-      var textContent = editor.textContent;
-      console.log("textContent='" + textContent + "'");
-
-      if (cursorOffset == 0)
-        modifiedTextContent = textContent.substring(1, textLength);
-      else if (cursorOffset > 0)
-        modifiedTextContent = textContent.substring(0, cursorOffset) +
-        textContent.substring(cursorOffset + 1, textContent.length);
-
-      if (modifiedTextContent) {
-        textLength = modifiedTextContent.length;
-        console.log("modifiedTextContent='" + modifiedTextContent + "'");
-        console.log("textLength=" + textLength);
-        editor.textContent = modifiedTextContent;
-      } else {
-        textLength = 0;
-        console.log("empty text");
-        editor.textContent = "&nbsp;";
-        cursorOffset = 0;
-      }
-      setSelectionAndCaretPositionFromOffset(cursorOffset);
-      console.log("textLength=" + textLength);
-      console.log("cursorOffset=" + cursorOffset);
+      deleteChar(RIGHT);
     }
 
     function type(event) {
