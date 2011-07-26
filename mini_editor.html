@@ -37,8 +37,8 @@
         <li class="strikethrough">Move cursor using arrow keys
         <li class="strikethrough">Cursor anywhere but at the end of text actually modifies text at that position
         <li class="strikethrough">Delete key deletes text to the right of cursor
-        <li>Delete/backspace deletes selection
-        <li>Typing replaces selection
+        <li class="strikethrough">Delete/backspace deletes selection
+        <li class="strikethrough">Typing replaces selection
         <li>Selection started within text box doesn't extend beyond text box
         <li>Home/end keys move cursor to beginning/end of line
         <li>Select text using keyboard (Shift + arrow keys)
@@ -116,7 +116,6 @@
       var selection = window.getSelection();
       // TODO(aboxhall): detect selection outside editor and ignore
       if (!selection.rangeCount) {
-        console.log("adding range");
         if (cursorOffset == -1)
           cursorOffset = textLength;
         setSelectionAndCaretPositionFromOffset(cursorOffset);
@@ -230,6 +229,16 @@
     function deleteSelection() {
       var selection = document.getSelection();
       var range = selection.getRangeAt(0);
+      if (!range || range.collapsed)
+        return false;
+
+      var textNode = editor.firstChild;
+      if (range.startContainer != textNode || range.endContainer != textNode)
+        return false;
+
+      range.deleteContents();
+      setCaretPositionFromSelection();
+      return true;
     }
 
     var LEFT = true;
@@ -264,16 +273,18 @@
     }
 
     function backspace() {
-      deleteChar(LEFT);
+      deleteSelection() || deleteChar(LEFT);
     }
 
     function del() {
-      deleteChar(RIGHT);
+      deleteSelection() || deleteChar(RIGHT);
     }
 
     function type(event) {
       if (!event.charCode)
         return;
+
+      deleteSelection();
 
       if (event.charCode == 32)
         var char = " ";
