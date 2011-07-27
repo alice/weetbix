@@ -291,7 +291,36 @@
 
     function moveCursorOneWord(direction) {
       console.log("moveCursorOneWord(" + direction + ")");
-      moveCursorOneCharacter(direction);
+      var textContent = editor.textContent;
+      if (direction == LEFT) {
+        var textToLeftOfCursor = textContent.substring(0, cursorOffset);
+        var textToRightOfLastFoundBreak = textToLeftOfCursor;
+        console.log("textToRightOfLastFoundBreak: " + textToRightOfLastFoundBreak);
+        var offsetOfLastFoundBreak = 0;
+        var iterations = 0;
+        while (textToRightOfLastFoundBreak && ++iterations != 15) {
+          var charsToNextWordBreak = textToRightOfLastFoundBreak.substring(1).search(/\s\b/);
+          if (charsToNextWordBreak != -1) {
+            console.log("charsToNextWordBreak: " + charsToNextWordBreak);
+            textToRightOfLastFoundBreak = textToRightOfLastFoundBreak.substring(charsToNextWordBreak);
+            offsetOfLastFoundBreak += charsToNextWordBreak;
+            console.log("textToRightOfLastFoundBreak: " + textToRightOfLastFoundBreak +
+                        ", offsetOfLastFoundBreak: " + offsetOfLastFoundBreak);
+          }
+        }
+        cursorOffset = offsetOfLastFoundBreak + 1;
+      } else {
+        var textToRightOfCursor = textContent.substring(cursorOffset);
+        var charsToNextWordBreak = textToRightOfCursor.search(/\w\b/);
+        var newCursorOffset;
+        if (charsToNextWordBreak == -1)
+          newCursorOffset = textLength;
+        else
+          newCursorOffset = cursorOffset + charsToNextWordBreak + 1 // no lookbehind :(
+
+        cursorOffset = newCursorOffset;
+      }
+      setSelectionAndCaretPositionFromOffset(cursorOffset);
     }
 
     function moveCursorToEndOfLine(direction) {
@@ -300,6 +329,7 @@
         cursorOffset = 0;
       else
         cursorOffset = textLength;
+
       setSelectionAndCaretPositionFromOffset(cursorOffset);
     }
 
