@@ -42,12 +42,12 @@
         <li class="strikethrough">Platform detection
         <li>Keyboard shortcuts (mac):
           <ul>
-            <li class="strikethrough">Ctrl+left goes to beginning of line
+            <li class="strikethrough">{Ctrl,Cmd}+left goes to beginning of line
             <li class="strikethrough">Ctrl+a goes to beginning of line
-            <li class="strikethrough">Ctrl+right goes to end of line
+            <li class="strikethrough">{Ctrl,Cmd}+right goes to end of line
             <li class="strikethrough">Ctrl+e goes to end of line
-            <li>Cmd+left moves left one word
-            <li>Cmd+right moves right one word
+            <li>Alt+left moves left one word
+            <li>Alt+right moves right one word
             <li>Cmd+a selects all text
             <li>Holding shift begins selection
             <li>Releasing shift ends selection
@@ -254,13 +254,13 @@
         else
           direction = RIGHT;
 
-        if (!event.ctrlKey && !event.metaKey) {
+        if (!event.ctrlKey && !event.metaKey && !event.altKey) {
           moveCursorOneCharacter(direction);
         } else if (os == OS.MAC) {
           event.preventDefault();
-          if (event.ctrlKey) {
+          if (event.ctrlKey || event.metaKey) {
             moveCursorToEndOfLine(direction);
-          } else if (event.metaKey) {
+          } else if (event.altKey) {
             moveCursorOneWord(direction);
           }
         } else {
