@@ -48,6 +48,7 @@
             <li class="strikethrough">Ctrl+e goes to end of line
             <li class="strikethrough">Alt+left moves left one word
             <li class="strikethrough">Alt+right moves right one word
+	    <li>Ctrl+k deletes to end of line
             <li>Cmd+a selects all text
             <li>Holding shift begins selection
             <li>Releasing shift ends selection
@@ -270,14 +271,29 @@
         return;
       }
 
-      // Ctrl+a, Ctrl+e
-      if (event.ctrlKey && (event.keyCode == 65 || event.keyCode == 69)) {
+      // Ctrl+a, Ctrl+e, Ctrl+k
+      if (event.ctrlKey && (event.keyCode == 65 || event.keyCode == 69 || event.keyCode == 75)) {
         if (event.keyCode == 65)
           moveCursorToEndOfLine(LEFT);
-        else
+        else if (event.keyCode == 69)
           moveCursorToEndOfLine(RIGHT);
+        else if (event.keyCode == 75)
+          deleteToEndOfLine();
         return;
       }
+    }
+
+    function deleteToEndOfLine() {
+      var textContent = editor.textContent;
+      textContent = textContent.substring(0, cursorOffset);
+      if (!textContent) {
+        textLength = 0;
+        editor.innerHTML = "&nbsp;";
+      } else {
+        textLength = textContent.length;
+        editor.innerHTML = textContent.replace(/ /g, "&nbsp;");
+      }
+      setSelectionAndCaretPositionFromOffset(cursorOffset);
     }
 
     function moveCursorOneCharacter(direction) {
@@ -395,10 +411,12 @@
 
       deleteSelection();
 
-      if (event.charCode == 32)
+      if (event.charCode == 32) {
         var char = " ";
-      else
+        event.preventDefault();
+      } else {
         var char = String.fromCharCode(event.charCode);
+      }
 
       currentText = editor.textContent;
       if (textLength == 0)
