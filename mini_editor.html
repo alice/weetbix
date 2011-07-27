@@ -295,20 +295,23 @@
       if (direction == LEFT) {
         var textToLeftOfCursor = textContent.substring(0, cursorOffset);
         var textToRightOfLastFoundBreak = textToLeftOfCursor;
+        var textToLeftOfLastFoundBreak = "";
         console.log("textToRightOfLastFoundBreak: " + textToRightOfLastFoundBreak);
-        var offsetOfLastFoundBreak = 0;
         var iterations = 0;
         while (textToRightOfLastFoundBreak && ++iterations != 15) {
-          var charsToNextWordBreak = textToRightOfLastFoundBreak.substring(1).search(/\s\b/);
+          var charsToNextWordBreak = textToRightOfLastFoundBreak.search(/(\s\b)/);
           if (charsToNextWordBreak != -1) {
+            charsToNextWordBreak += 1; // eat the space too
             console.log("charsToNextWordBreak: " + charsToNextWordBreak);
+            textToLeftOfLastFoundBreak += textToRightOfLastFoundBreak.substring(0, charsToNextWordBreak)
             textToRightOfLastFoundBreak = textToRightOfLastFoundBreak.substring(charsToNextWordBreak);
-            offsetOfLastFoundBreak += charsToNextWordBreak;
-            console.log("textToRightOfLastFoundBreak: " + textToRightOfLastFoundBreak +
-                        ", offsetOfLastFoundBreak: " + offsetOfLastFoundBreak);
+            console.log("textToLeftOfLastFoundBreak: [" + textToLeftOfLastFoundBreak +
+		        "], textToRightOfLastFoundBreak: [" + textToRightOfLastFoundBreak + "]")
+          } else {
+            break;
           }
         }
-        cursorOffset = offsetOfLastFoundBreak + 1;
+        cursorOffset = textToLeftOfLastFoundBreak.length;
       } else {
         var textToRightOfCursor = textContent.substring(cursorOffset);
         var charsToNextWordBreak = textToRightOfCursor.search(/\w\b/);
