@@ -42,10 +42,10 @@
         <li class="strikethrough">Platform detection
         <li>Keyboard shortcuts (mac):
           <ul>
-            <li>Ctrl+left goes to beginning of line
-            <li>Ctrl+a goes to beginning of line
-            <li>Ctrl+right goes to end of line
-            <li>Ctrl+e goes to end of line
+            <li class="strikethrough">Ctrl+left goes to beginning of line
+            <li class="strikethrough">Ctrl+a goes to beginning of line
+            <li class="strikethrough">Ctrl+right goes to end of line
+            <li class="strikethrough">Ctrl+e goes to end of line
             <li>Cmd+left moves left one word
             <li>Cmd+right moves right one word
             <li>Cmd+a selects all text
@@ -221,40 +221,88 @@
       caret.style.display = 'none';
     }
 
+    var LEFT = true;
+    var RIGHT = false;
+
     function cursor(event) {
+      event.stopPropagation();
+
       // backspace
       if (event.keyCode == 8) {
         event.preventDefault();
         backspace();
+        return;
       }
 
       // delete
-      if (event.keyCode == 46)
+      if (event.keyCode == 46) {
         del();
+        return;
+      }
 
       // return
-      if (event.keyCode == 13)
+      if (event.keyCode == 13) {
         editor.blur();
-
-      // left
-      if (event.keyCode == 37 && cursorOffset > 0) {
-        // TODO(aboxhall): handle ctrl (offset -> 0) + meta (move one word)
-        // TODO(davidbarr): handle windows key combos + platform detection
-        cursorOffset--;
-        setSelectionAndCaretPositionFromOffset(cursorOffset);
+        return;
       }
 
-      // right
-      if (event.keyCode == 39 && cursorOffset < textLength) {
-        // TODO(aboxhall): handle ctrl + meta
-        // TODO(davidbarr): handle windows key combos + platform detection
-        cursorOffset++;
-        setSelectionAndCaretPositionFromOffset(cursorOffset);
+      // left or right
+      if (event.keyCode == 37 || event.keyCode == 39) {
+        var direction
+        if (event.keyCode == 37)
+          direction = LEFT;
+        else
+          direction = RIGHT;
+
+        if (!event.ctrlKey && !event.metaKey) {
+          moveCursorOneCharacter(direction);
+        } else if (os == OS.MAC) {
+          event.preventDefault();
+          if (event.ctrlKey) {
+            moveCursorToEndOfLine(direction);
+          } else if (event.metaKey) {
+            moveCursorOneWord(direction);
+          }
+        } else {
+          // TODO(davidbarr): handle windows key combos
+          moveCursorOneCharacter(direction);
+        }
+        return;
       }
 
-      event.stopPropagation();
-      return;
+      // Ctrl+a, Ctrl+e
+      if (event.ctrlKey && (event.keyCode == 65 || event.keyCode == 69)) {
+        if (event.keyCode == 65)
+          moveCursorToEndOfLine(LEFT);
+        else
+          moveCursorToEndOfLine(RIGHT);
+        return;
+      }
     }
+
+    function moveCursorOneCharacter(direction) {
+      if (direction == LEFT && cursorOffset != 0) {
+        cursorOffset--;
+      } else if (direction == RIGHT && cursorOffset != textLength) {
+        cursorOffset++;
+      }
+      setSelectionAndCaretPositionFromOffset(cursorOffset);
+    }
+
+    function moveCursorOneWord(direction) {
+      console.log("moveCursorOneWord(" + direction + ")");
+      moveCursorOneCharacter(direction);
+    }
+
+    function moveCursorToEndOfLine(direction) {
+      console.log("moveCursorToEndOfLine(" + direction + ")");
+      if (direction == LEFT)
+        cursorOffset = 0;
+      else
+        cursorOffset = textLength;
+      setSelectionAndCaretPositionFromOffset(cursorOffset);
+    }
+
 
     function deleteSelection() {
       var selection = document.getSelection();
@@ -271,8 +319,6 @@
       return true;o
     }
 
-    var LEFT = true;
-    var RIGHT = false;
     function deleteChar(direction) {
       if (textLength == 0)
         return;
