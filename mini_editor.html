@@ -90,6 +90,7 @@
 
     editor.addEventListener("keydown", cursor);
     editor.addEventListener("keypress", type);
+    editor.addEventListener("keyup", endSelection);
 
     // If focus comes from a click, give the click event a chance to set the
     // selection before setting the cursor position
@@ -106,6 +107,7 @@
     var caretX = 0;
     var caretY = 0;
     var cursorActive = false;
+    var selectionStart = -1;
 
     editor.innerHTML = editor.innerHTML.replace(/ /g, "&nbsp;");
     var textLength = editor.textContent.length;
@@ -131,12 +133,27 @@
     function setSelectionAndCaretPositionFromOffset() {
       var selection = window.getSelection();
       var textNode = editor.firstChild;
-      selection.setBaseAndExtent(textNode, cursorOffset, textNode, cursorOffset);
-      setCaretPositionFromSelection();
+      if (selectionStart < 0) {
+        console.log("selectionStart < 0: " + selectionStart);
+        selection.setBaseAndExtent(textNode, cursorOffset, textNode, cursorOffset);
+        setCaretPositionFromSelection();
+      } else {
+        console.log("selectionStart >= 0: " + selectionStart);
+        if (selectionStart < cursorOffset) {
+          selection.setBaseAndExtent(textNode, selectionStart, textNode, cursorOffset);
+          setCaretPositionFromSelection(RIGHT);
+        } else {
+          selection.setBaseAndExtent(textNode, cursorOffset, textNode, selectionStart);
+          setCaretPositionFromSelection(LEFT);
+        }
+      }
     }
 
+    var LEFT = true;
+    var RIGHT = false;
     function setCaretPositionFromSelection(opt_direction) {
       direction = opt_direction || RIGHT;
+
       var caret = document.getElementById("caret");
       var selection = window.getSelection();
       // TODO(aboxhall): detect selection outside editor and ignore
@@ -166,7 +183,7 @@
           x = rect.right + window.pageXOffset;
           cursorOffset = range.endOffset;
         } else {
-          x = rext.left + window.pageXOffset;
+          x = rect.left + window.pageXOffset;
           cursorOffset = range.startOffset;
         }
       } else {
@@ -203,7 +220,6 @@
           }
         }
       }
-      console.log("setCaretPositionFromSelection cursorOffset: " + cursorOffset);
       caretX = x;
       caretY = rect.top + window.pageYOffset;
       caret.style.left = caretX + 'px';
@@ -221,9 +237,6 @@
       cursorActive = false;
       caret.style.display = 'none';
     }
-
-    var LEFT = true;
-    var RIGHT = false;
 
     function cursor(event) {
       event.stopPropagation();
@@ -249,6 +262,9 @@
 
       // left or right
       if (event.keyCode == 37 || event.keyCode == 39) {
+        if (event.shiftKey)
+          beginSelection();
+
         var direction
         if (event.keyCode == 37)
           direction = LEFT;
@@ -289,6 +305,19 @@
         selectAll();
         return;
       }
+    }
+
+    function beginSelection(event) {
+      console.log("beginSelection");
+      if (selectionStart < 0)
+        selectionStart = cursorOffset;
+    }
+
+    function endSelection(event) {
+      if (event.keyCode != 16)
+        return;
+      console.log("endSelection");
+      selectionStart = -1;
     }
 
     function selectAll() {
@@ -343,7 +372,6 @@
       else
         cursorOffset = textLength;
 
-      console.log("moveCursorToEndOfLine cursorOffset: " + cursorOffset);
       setSelectionAndCaretPositionFromOffset();
     }
 
