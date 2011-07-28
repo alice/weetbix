@@ -48,7 +48,7 @@
             <li class="strikethrough">Ctrl+e goes to end of line
             <li class="strikethrough">Alt+left moves left one word
             <li class="strikethrough">Alt+right moves right one word
-	    <li>Ctrl+k deletes to end of line
+	    <li class="strikethrough">Ctrl+k deletes to end of line
             <li>Cmd+a selects all text
             <li>Holding shift begins selection
             <li>Releasing shift ends selection
@@ -97,7 +97,6 @@
       positionAndShowCaret.bind(0, event), 0);
     });
     editor.addEventListener("click", function() {
-      console.log("click");
       setTimeout(positionAndShowCaret.bind(0, event), 0);
     });
 
@@ -109,7 +108,6 @@
     var cursorActive = false;
 
     editor.innerHTML = editor.innerHTML.replace(/ /g, "&nbsp;");
-    console.log("innerHTML=" + editor.innerHTML);
     var textLength = editor.textContent.length;
 
     function positionAndShowCaret(event) {
@@ -131,10 +129,10 @@
     }
 
     function setSelectionAndCaretPositionFromOffset(offset) {
-      console.log("offset=" + offset);
       var selection = window.getSelection();
       var textNode = editor.firstChild;
       selection.setBaseAndExtent(textNode, offset, textNode, offset);
+      console.log("setSelectionAndCaretPositionFromOffset cursorOffset: " + cursorOffset);
       setCaretPositionFromSelection();
     }
 
@@ -180,13 +178,10 @@
             left--;
             newRange.setStart(node, left);
             newRange.setEnd(node, pos);
-            console.log("range: " + left + ", " + pos);
             rect = newRange.getBoundingClientRect();
             if (rect) {
               x = rect.right;
-              console.log("about to set cursorOffset; currently " + cursorOffset);
               cursorOffset = newRange.endOffset;
-              console.log("left > 0; cursorOffset=" + cursorOffset);
               break;
             }
           }
@@ -198,12 +193,12 @@
             if (rect) {
               x = rect.left;
               cursorOffset = newRange.startOffset;
-              console.log("right < max; cursorOffset=" + cursorOffset);
               break;
             }
           }
         }
       }
+      console.log("setCaretPositionFromSelection cursorOffset: " + cursorOffset);
       caretX = x;
       caretY = rect.top + window.pageYOffset;
       caret.style.left = caretX + 'px';
@@ -284,14 +279,22 @@
     }
 
     function deleteToEndOfLine() {
-      var textContent = editor.textContent;
-      textContent = textContent.substring(0, cursorOffset);
-      if (!textContent) {
+      if (cursorOffset > 0) {
+        console.log("deleteToEndOfLine cursorOffset: " + cursorOffset);
+        var textContent = editor.textContent;
+        textContent = textContent.substring(0, cursorOffset);
+        if (textContent && textContent.length > 0) {
+          console.log("textContent: [" + textContent + "], textContent.length: " + textContent.length);
+          textLength = textContent.length;
+          editor.innerHTML = textContent.replace(/ /g, "&nbsp;");
+        } else {
+          console.log("textContent: [" + textContent + "], length: " + textContent.length);
+          textLength = 0;
+          editor.innerHTML = "&nbsp;";
+         }
+      } else {
         textLength = 0;
         editor.innerHTML = "&nbsp;";
-      } else {
-        textLength = textContent.length;
-        editor.innerHTML = textContent.replace(/ /g, "&nbsp;");
       }
       setSelectionAndCaretPositionFromOffset(cursorOffset);
     }
@@ -306,23 +309,17 @@
     }
 
     function moveCursorOneWord(direction) {
-      console.log("moveCursorOneWord(" + direction + ")");
       var textContent = editor.textContent;
       if (direction == LEFT) {
         var textToLeftOfCursor = textContent.substring(0, cursorOffset);
         var textToRightOfLastFoundBreak = textToLeftOfCursor;
         var textToLeftOfLastFoundBreak = "";
-        console.log("textToRightOfLastFoundBreak: " + textToRightOfLastFoundBreak);
-        var iterations = 0;
-        while (textToRightOfLastFoundBreak && ++iterations != 15) {
+        while (textToRightOfLastFoundBreak) {
           var charsToNextWordBreak = textToRightOfLastFoundBreak.search(/(\s\b)/);
           if (charsToNextWordBreak != -1) {
             charsToNextWordBreak += 1; // eat the space too
-            console.log("charsToNextWordBreak: " + charsToNextWordBreak);
             textToLeftOfLastFoundBreak += textToRightOfLastFoundBreak.substring(0, charsToNextWordBreak)
             textToRightOfLastFoundBreak = textToRightOfLastFoundBreak.substring(charsToNextWordBreak);
-            console.log("textToLeftOfLastFoundBreak: [" + textToLeftOfLastFoundBreak +
-		        "], textToRightOfLastFoundBreak: [" + textToRightOfLastFoundBreak + "]")
           } else {
             break;
           }
@@ -343,12 +340,12 @@
     }
 
     function moveCursorToEndOfLine(direction) {
-      console.log("moveCursorToEndOfLine(" + direction + ")");
       if (direction == LEFT)
         cursorOffset = 0;
       else
         cursorOffset = textLength;
 
+      console.log("moveCursorToEndOfLine cursorOffset: " + cursorOffset);
       setSelectionAndCaretPositionFromOffset(cursorOffset);
     }
 
@@ -389,12 +386,10 @@
         textLength = editor.textContent.length;
       } else {
         textLength = 0;
-        console.log("empty text");
         editor.innerHTML = "&nbsp;";
         cursorOffset = 0;
       }
       setSelectionAndCaretPositionFromOffset(cursorOffset);
-      console.log("after backspace; cursorOffset=" + cursorOffset + ", textLength=" + textLength);
     }
 
     function backspace() {
@@ -406,7 +401,7 @@
     }
 
     function type(event) {
-      if (!event.charCode)
+      if (!event.charCode || event.ctrlKey || event.altKey || event.metaKey)
         return;
 
       deleteSelection();
