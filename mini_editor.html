@@ -125,25 +125,25 @@
       if (cursorOffset < 0)
         setCaretPositionFromSelection();
       else
-        setSelectionAndCaretPositionFromOffset(cursorOffset);
+        setSelectionAndCaretPositionFromOffset();
     }
 
-    function setSelectionAndCaretPositionFromOffset(offset) {
+    function setSelectionAndCaretPositionFromOffset() {
       var selection = window.getSelection();
       var textNode = editor.firstChild;
-      selection.setBaseAndExtent(textNode, offset, textNode, offset);
-      console.log("setSelectionAndCaretPositionFromOffset cursorOffset: " + cursorOffset);
+      selection.setBaseAndExtent(textNode, cursorOffset, textNode, cursorOffset);
       setCaretPositionFromSelection();
     }
 
-    function setCaretPositionFromSelection() {
+    function setCaretPositionFromSelection(opt_direction) {
+      direction = opt_direction || RIGHT;
       var caret = document.getElementById("caret");
       var selection = window.getSelection();
       // TODO(aboxhall): detect selection outside editor and ignore
       if (!selection.rangeCount) {
         if (cursorOffset == -1)
           cursorOffset = textLength;
-        setSelectionAndCaretPositionFromOffset(cursorOffset);
+        setSelectionAndCaretPositionFromOffset();
       }
 
       var range = selection.getRangeAt(0);
@@ -162,8 +162,13 @@
           return;
         }
 
-        x = rect.right + window.pageXOffset;
-        cursorOffset = range.endOffset;
+        if (direction == RIGHT) {
+          x = rect.right + window.pageXOffset;
+          cursorOffset = range.endOffset;
+        } else {
+          x = rext.left + window.pageXOffset;
+          cursorOffset = range.startOffset;
+        }
       } else {
         // create a new selection which is >0 width and get the position from that
         var node = range.startContainer;
@@ -276,27 +281,20 @@
           deleteToEndOfLine();
         return;
       }
+
+      // TODO(aboxhall): mac only?
+      // Cmd+a
+      if (event.metaKey && event.keyCode == 65) {
+        event.preventDefault();
+        selectAll();
+        return;
+      }
     }
 
-    function deleteToEndOfLine() {
-      if (cursorOffset > 0) {
-        console.log("deleteToEndOfLine cursorOffset: " + cursorOffset);
-        var textContent = editor.textContent;
-        textContent = textContent.substring(0, cursorOffset);
-        if (textContent && textContent.length > 0) {
-          console.log("textContent: [" + textContent + "], textContent.length: " + textContent.length);
-          textLength = textContent.length;
-          editor.innerHTML = textContent.replace(/ /g, "&nbsp;");
-        } else {
-          console.log("textContent: [" + textContent + "], length: " + textContent.length);
-          textLength = 0;
-          editor.innerHTML = "&nbsp;";
-         }
-      } else {
-        textLength = 0;
-        editor.innerHTML = "&nbsp;";
-      }
-      setSelectionAndCaretPositionFromOffset(cursorOffset);
+    function selectAll() {
+      document.getSelection().selectAllChildren(editor);
+      cursorOffset = textLength;
+      setCaretPositionFromSelection(RIGHT);
     }
 
     function moveCursorOneCharacter(direction) {
@@ -305,7 +303,7 @@
       } else if (direction == RIGHT && cursorOffset != textLength) {
         cursorOffset++;
       }
-      setSelectionAndCaretPositionFromOffset(cursorOffset);
+      setSelectionAndCaretPositionFromOffset();
     }
 
     function moveCursorOneWord(direction) {
@@ -336,7 +334,7 @@
 
         cursorOffset = newCursorOffset;
       }
-      setSelectionAndCaretPositionFromOffset(cursorOffset);
+      setSelectionAndCaretPositionFromOffset();
     }
 
     function moveCursorToEndOfLine(direction) {
@@ -346,23 +344,47 @@
         cursorOffset = textLength;
 
       console.log("moveCursorToEndOfLine cursorOffset: " + cursorOffset);
-      setSelectionAndCaretPositionFromOffset(cursorOffset);
+      setSelectionAndCaretPositionFromOffset();
     }
 
+    function deleteRange(start, end) {
+      if (start == end || end < start)
+        return;
+      if (start < 0)
+        start = 0;
+      if (end > textLength)
+        end = textLength;
+
+      if (start == 0 && end == textLength) {
+        textLength = 0;
+        editor.innerHTML = "&nbsp;";
+        cursorOffset = 0;
+      } else {
+        editor.firstChild.deleteData(start, end - start);
+        textLength = editor.textContent.length;
+      }
+    }
+
+    function deleteToEndOfLine() {
+      deleteRange(cursorOffset, textLength);
+      setSelectionAndCaretPositionFromOffset();
+    }
 
     function deleteSelection() {
       var selection = document.getSelection();
       var range = selection.getRangeAt(0);
-      if (!range || range.collapsed)
+      if (!range || range.collapsed ||
+          range.startContainer != editor.firstChild || range.endContainer != editor.firstChild)
         return false;
 
       var textNode = editor.firstChild;
       if (range.startContainer != textNode || range.endContainer != textNode)
         return false;
 
-      range.deleteContents();
-      setCaretPositionFromSelection();
-      return true;o
+      deleteRange(range.startOffset, range.endOffset);
+      cursorOffset = range.startOffset;
+      setSelectionAndCaretPositionFromOffset();
+      return true;
     }
 
     function deleteChar(direction) {
@@ -376,20 +398,13 @@
         return;
 
       if (direction == LEFT) {
-        editor.firstChild.deleteData(cursorOffset - 1, 1);
+        deleteRange(cursorOffset - 1, cursorOffset);
         cursorOffset--;
       } else {
-        editor.firstChild.deleteData(cursorOffset, 1);
+        deleteRange(cursorOffset, cursorOffset + 1);
       }
 
-      if (editor.textContent) {
-        textLength = editor.textContent.length;
-      } else {
-        textLength = 0;
-        editor.innerHTML = "&nbsp;";
-        cursorOffset = 0;
-      }
-      setSelectionAndCaretPositionFromOffset(cursorOffset);
+      setSelectionAndCaretPositionFromOffset();
     }
 
     function backspace() {
