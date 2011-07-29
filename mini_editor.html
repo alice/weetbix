@@ -90,7 +90,6 @@
 
     editor.addEventListener("keydown", cursor);
     editor.addEventListener("keypress", type);
-    editor.addEventListener("keyup", endSelection);
 
     // If focus comes from a click, give the click event a chance to set the
     // selection before setting the cursor position
@@ -134,11 +133,9 @@
       var selection = window.getSelection();
       var textNode = editor.firstChild;
       if (selectionStart < 0) {
-        console.log("selectionStart < 0: " + selectionStart);
         selection.setBaseAndExtent(textNode, cursorOffset, textNode, cursorOffset);
         setCaretPositionFromSelection();
       } else {
-        console.log("selectionStart >= 0: " + selectionStart);
         if (selectionStart < cursorOffset) {
           selection.setBaseAndExtent(textNode, selectionStart, textNode, cursorOffset);
           setCaretPositionFromSelection(RIGHT);
@@ -262,17 +259,22 @@
 
       // left or right
       if (event.keyCode == 37 || event.keyCode == 39) {
-        if (event.shiftKey)
-          beginSelection();
-
         var direction
         if (event.keyCode == 37)
           direction = LEFT;
         else
           direction = RIGHT;
 
+        if (event.shiftKey) {
+          event.preventDefault();  // prevent the browser changing the selection for us
+          if (selectionStart < 0)
+            selectionStart = cursorOffset;
+        } else {
+          selectionStart = -1;
+        }
+
         if (!event.ctrlKey && !event.metaKey && !event.altKey) {
-          moveCursorOneCharacter(direction);
+          moveCursorOneCharacter(direction, event.shiftKey);
         } else if (os == OS.MAC) {
           event.preventDefault();
           if (event.ctrlKey || event.metaKey) {
@@ -307,26 +309,13 @@
       }
     }
 
-    function beginSelection(event) {
-      console.log("beginSelection");
-      if (selectionStart < 0)
-        selectionStart = cursorOffset;
-    }
-
-    function endSelection(event) {
-      if (event.keyCode != 16)
-        return;
-      console.log("endSelection");
-      selectionStart = -1;
-    }
-
     function selectAll() {
       document.getSelection().selectAllChildren(editor);
       cursorOffset = textLength;
       setCaretPositionFromSelection(RIGHT);
     }
 
-    function moveCursorOneCharacter(direction) {
+    function moveCursorOneCharacter(direction, inSelection) {
       if (direction == LEFT && cursorOffset != 0) {
         cursorOffset--;
       } else if (direction == RIGHT && cursorOffset != textLength) {
