@@ -435,22 +435,26 @@
     }
 
     function deleteChar(direction) {
-      if (textLength == 0)
+      console.log("cursorOffset = " + cursorOffset);
+      if (textLength == 0) {
+        console.log("textLength == 0");
         return;
-
-      if (direction == LEFT && cursorOffset == 0)
-        return;
-
-      if (direction == RIGHT && cursorOffset == textLength)
-        return;
-
-      if (direction == LEFT) {
-        deleteRange(cursorOffset - 1, cursorOffset);
-        cursorOffset--;
-      } else {
-        deleteRange(cursorOffset, cursorOffset + 1);
       }
 
+      if (direction == LEFT && cursorOffset == 0) {
+        console.log(direction == LEFT && cursorOffset == 0);
+        return;
+      }
+
+      if (direction == RIGHT && cursorOffset == textLength) {
+        console.log("direction == RIGHT && cursorOffset == textLength");
+        return;
+      }
+
+      if (direction == LEFT)
+        cursorOffset--;
+
+      deleteRange(cursorOffset, cursorOffset + 1);
       setSelectionAndCaretPositionFromOffset();
     }
 
