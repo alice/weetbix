@@ -66,7 +66,7 @@
         <li class="strikethrough">Second click does not move cursor
         <li class="strikethrough">Deleting all text causes everything to break
         <li class="strikethrough">Can't type spaces
-        <li style="font-style: italic;">Race condition when backspacing to start of text causing cursor to jitter (?)
+        <li style="strikethrough">Race condition when backspacing to start of text causing cursor to jitter (?)
       </ul>
     </p>
     <div id="caret" class="caret" style="display: none"/>
@@ -465,6 +465,7 @@
         return;
 
       deleteSelection();
+      selectionStart = -1;
 
       if (event.charCode == 32) {
         var char = " ";
