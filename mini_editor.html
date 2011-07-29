@@ -52,8 +52,8 @@
             <li class="strikethrough">Cmd+a selects ALL the text
             <li class="strikethrough">Holding shift begins selection
             <li class="strikethrough">Releasing shift ends selection
-            <li>Alt+backspace deletes one word left
-            <li>Alt+delete deletes one word right
+            <li class="strikethrough">Alt+backspace deletes one word left
+            <li class="strikethrough">Alt+delete deletes one word right
           </ul>
         <li>Selection started within text box doesn't extend beyond text box
         <li>Cursor blinking (low priority)
@@ -243,13 +243,21 @@
       // backspace
       if (event.keyCode == 8) {
         event.preventDefault();
-        backspace();
+        if (event.altKey)
+          deleteOneWord(LEFT);
+        else if (event.metaKey)
+          deleteToEndOfLine(LEFT);
+        else
+          backspace();
         return;
       }
 
       // delete
       if (event.keyCode == 46) {
-        del();
+        if (event.altKey)
+          deleteOneWord(RIGHT);
+        else
+          del();
         return;
       }
 
@@ -298,7 +306,7 @@
         else if (event.keyCode == 69)
           moveCursorToEndOfLine(RIGHT);
         else if (event.keyCode == 75)
-          deleteToEndOfLine();
+          deleteToEndOfLine(RIGHT);
         return;
       }
 
@@ -327,6 +335,11 @@
     }
 
     function moveCursorOneWord(direction) {
+      cursorOffset = offsetOfNextWordBreak(direction);
+      setSelectionAndCaretPositionFromOffset();
+    }
+
+    function offsetOfNextWordBreak(direction) {
       var textContent = editor.textContent;
       if (direction == LEFT) {
         var textToLeftOfCursor = textContent.substring(0, cursorOffset);
@@ -335,26 +348,22 @@
         while (textToRightOfLastFoundBreak) {
           var charsToNextWordBreak = textToRightOfLastFoundBreak.search(/(\s\b)/);
           if (charsToNextWordBreak != -1) {
-            charsToNextWordBreak += 1; // eat the space too
+            charsToNextWordBreak += 1; // space belongs to the left
             textToLeftOfLastFoundBreak += textToRightOfLastFoundBreak.substring(0, charsToNextWordBreak)
             textToRightOfLastFoundBreak = textToRightOfLastFoundBreak.substring(charsToNextWordBreak);
           } else {
             break;
           }
         }
-        cursorOffset = textToLeftOfLastFoundBreak.length;
+        return textToLeftOfLastFoundBreak.length;
       } else {
         var textToRightOfCursor = textContent.substring(cursorOffset);
         var charsToNextWordBreak = textToRightOfCursor.search(/\w\b/);
-        var newCursorOffset;
         if (charsToNextWordBreak == -1)
-          newCursorOffset = textLength;
+          return textLength;
         else
-          newCursorOffset = cursorOffset + charsToNextWordBreak + 1 // no lookbehind :(
-
-        cursorOffset = newCursorOffset;
+          return cursorOffset + charsToNextWordBreak + 1 // no lookbehind :(
       }
-      setSelectionAndCaretPositionFromOffset();
     }
 
     function moveCursorToEndOfLine(direction) {
@@ -384,8 +393,25 @@
       }
     }
 
-    function deleteToEndOfLine() {
-      deleteRange(cursorOffset, textLength);
+    function deleteOneWord(direction) {
+      if (direction == LEFT) {
+        startOffset = offsetOfNextWordBreak(LEFT);
+        deleteRange(startOffset, cursorOffset);
+        cursorOffset = startOffset;
+      } else {
+        endOffset = offsetOfNextWordBreak(RIGHT);
+        deleteRange(cursorOffset, endOffset);
+      }
+      setSelectionAndCaretPositionFromOffset();
+    }
+
+    function deleteToEndOfLine(direction) {
+      if (direction == LEFT) {
+        deleteRange(0, cursorOffset);
+        cursorOffset = 0;
+      } else {
+        deleteRange(cursorOffset, textLength);
+      }
       setSelectionAndCaretPositionFromOffset();
     }
 
