@@ -416,6 +416,7 @@
     }
 
     function deleteSelection() {
+      selectionStart = -1;
       var selection = document.getSelection();
       var range = selection.getRangeAt(0);
       if (!range || range.collapsed ||
@@ -465,7 +466,6 @@
         return;
 
       deleteSelection();
-      selectionStart = -1;
 
       if (event.charCode == 32) {
         var char = " ";
