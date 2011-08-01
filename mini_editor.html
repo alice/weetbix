@@ -28,7 +28,7 @@
     }
   </style>
 </head>
-<body>
+<body onload="toggleCaretPeriodically(500)">
   <div class="content">
     <h2><code>role="textbox"</code> test page</h2>
     <div id="editor" class="editor" style="width: 500px" role="textbox" aria-multiline="false" tabindex=0>Some text in the editor.</div>
@@ -256,6 +256,17 @@
       var caret = document.getElementById("caret");
       cursorActive = false;
       caret.style.display = 'none';
+    }
+
+    function toggleCaret() {
+      var caret = document.getElementById("caret");
+      var visible = caret.style.visibility == "visible";
+      caret.style.visibility = visible ? "hidden" : "visible";
+    }
+
+    function toggleCaretPeriodically(timeout) {
+        toggleCaret();
+        setTimeout('toggleCaretPeriodically(' + timeout + ')', timeout);
     }
 
     function cursor(event) {
