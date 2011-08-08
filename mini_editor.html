@@ -280,87 +280,82 @@
         setTimeout('toggleCaretPeriodically(' + timeout + ')', timeout);
     }
 
-    function cursor(event) {
-      event.stopPropagation();
+	var keyCode = {"backspace": 8, "delete": 46, "return": 13, "left": 37, "right": 39, "a": 65, "e": 69, "k": 75};
+	var preventDefault = {};
+	var action = {};
 
-      // backspace
-      if (event.keyCode == 8) {
-        event.preventDefault();
-        if (event.altKey)
-          deleteOneWord(LEFT);
-        else if (event.metaKey)
-          deleteToEndOfLine(LEFT);
-        else
-          backspace();
-        return;
-      }
+	function modifierString(ctrlKey, altKey, shiftKey, metaKey) {
+		var combo = "";
+		if (ctrlKey) combo += "Ctrl";
+		if (altKey) combo += "Alt";
+		if (shiftKey) combo += "Shift";
+		if (metaKey) combo += "Meta";
+		return combo;
+	}
 
-      // delete
-      if (event.keyCode == 46) {
-        if (event.altKey)
-          deleteOneWord(RIGHT);
-        else
-          del();
-        return;
-      }
+    function bindMappingPreventDefault(key, modifiers, callback) {
+		var code = keyCode[key];
+		preventDefault[code] = preventDefault[code] || {};
+		preventDefault[code][modifiers] = true;
+		bindMapping(key, modifiers, callback);
+	}
 
-      // return
-      if (event.keyCode == 13) {
-        editor.blur();
-        return;
-      }
+	function bindMapping(key, modifiers, callback) {
+		var code = keyCode[key];
+		action[code] = action[code] || {};
+		action[code][modifiers] = callback;
+	}
 
-      // left or right
-      if (event.keyCode == 37 || event.keyCode == 39) {
-        var direction
-        if (event.keyCode == 37)
-          direction = LEFT;
-        else
-          direction = RIGHT;
+	bindMappingPreventDefault("backspace", "", backspace);
+	bindMappingPreventDefault("backspace", "Alt", deleteOneWord.bind(0, LEFT));
+	bindMappingPreventDefault("backspace", "Meta", deleteToEndOfLine.bind(0, LEFT));
+	bindMapping("delete", "", del);
+	bindMapping("delete", "Alt", deleteOneWord.bind(0, RIGHT));
+	bindMappingPreventDefault("delete", "Meta", deleteToEndOfLine.bind(0, RIGHT));
+	bindMapping("return", "", editor.blur.bind(editor));
+	bindMapping("a", "Ctrl", moveCursorToEndOfLine.bind(0, LEFT));
+	bindMapping("e", "Ctrl", moveCursorToEndOfLine.bind(0, RIGHT));
+	bindMapping("k", "Ctrl", deleteToEndOfLine.bind(0, RIGHT));
+	bindMappingPreventDefault("a", "Meta", selectAll);
 
-        if (event.shiftKey) {
-          event.preventDefault();  // prevent the browser changing the selection for us
-          if (selectionStart < 0)
-            selectionStart = cursorOffset;
-        } else {
-          selectionStart = -1;
-        }
+	function mapLeftRight(key, dir) {
+		var direction = dir;
+		bindMapping(key, "", moveCursorOneCharacter.bind(0, direction, false));
+		bindMapping(key, "Ctrl", moveCursorToEndOfLine.bind(0, direction));
+		bindMapping(key, "Meta", moveCursorToEndOfLine.bind(0, direction));
+		bindMapping(key, "Alt", moveCursorOneWord.bind(0, direction));
+		bindMappingPreventDefault(key, "Shift", moveCursorOneCharacter.bind(0, direction, true));
+		bindMappingPreventDefault(key, "CtrlShift", moveCursorToEndOfLine.bind(0, direction));
+		bindMappingPreventDefault(key, "ShiftMeta", moveCursorToEndOfLine.bind(0, direction));
+		bindMappingPreventDefault(key, "AltShift", moveCursorOneWord.bind(0, direction));
+	}
 
-        if (!event.ctrlKey && !event.metaKey && !event.altKey) {
-          moveCursorOneCharacter(direction, event.shiftKey);
-        } else if (os == OS.MAC) {
-          event.preventDefault();
-          if (event.ctrlKey || event.metaKey) {
-            moveCursorToEndOfLine(direction);
-          } else if (event.altKey) {
-            moveCursorOneWord(direction);
-          }
-        } else {
-          // TODO(davidbarr): handle windows key combos
-          moveCursorOneCharacter(direction);
-        }
-        return;
-      }
+	mapLeftRight("left", LEFT);
+	mapLeftRight("right", RIGHT);
 
-      // Ctrl+a, Ctrl+e, Ctrl+k
-      if (event.ctrlKey && (event.keyCode == 65 || event.keyCode == 69 || event.keyCode == 75)) {
-        if (event.keyCode == 65)
-          moveCursorToEndOfLine(LEFT);
-        else if (event.keyCode == 69)
-          moveCursorToEndOfLine(RIGHT);
-        else if (event.keyCode == 75)
-          deleteToEndOfLine(RIGHT);
-        return;
-      }
+	function cursor(event) {
+	  event.stopPropagation();
 
-      // TODO(aboxhall): mac only?
-      // Cmd+a
-      if (event.metaKey && event.keyCode == 65) {
-        event.preventDefault();
-        selectAll();
-        return;
-      }
-    }
+	  var modifiers = modifierString(event.ctrlKey, event.altKey, event.shiftKey, event.metaKey);
+
+	  if (preventDefault[event.keyCode] && preventDefault[event.keyCode][modifiers]) {
+		event.preventDefault();
+	  }
+
+	  if (event.keyCode == keyCode["left"] || event.keyCode == keyCode["right"]) {
+		if (event.shiftKey) {
+		  if (selectionStart < 0)
+			selectionStart = cursorOffset;
+		} else {
+		  selectionStart = -1;
+		}
+	  }
+
+	  if (action[event.keyCode] && action[event.keyCode][modifiers]) {
+		action[event.keyCode][modifiers]();
+		return;
+	  }
+	}
 
     function selectAll() {
       document.getSelection().selectAllChildren(editor);
