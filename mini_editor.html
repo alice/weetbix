@@ -28,7 +28,7 @@
     }
   </style>
 </head>
-<body onload="toggleCaretPeriodically(500)">
+<body onload="toggleCaretPeriodically()">
   <div class="content">
     <h2><code>role="textbox"</code> test page</h2>
     <div id="editor" class="editor" style="width: 500px" role="textbox" aria-multiline="false" tabindex=0>Some text in the editor.</div>
@@ -157,6 +157,7 @@
     }
 
     function positionCaret() {
+	  suspendCaretToggling(500);
       if (cursorOffset < 0)
         setCaretPositionFromSelection();
       else
@@ -164,6 +165,8 @@
     }
 
     function setSelectionAndCaretPositionFromOffset() {
+	  suspendCaretToggling();
+
       var selection = window.getSelection();
       var textNode = editor.firstChild;
       if (selectionStart < 0) {
@@ -184,6 +187,8 @@
     var RIGHT = false;
     function setCaretPositionFromSelection(opt_direction) {
       direction = opt_direction || RIGHT;
+
+	  suspendCaretToggling();
 
       var caret = document.getElementById("caret");
       var selection = window.getSelection();
@@ -269,15 +274,25 @@
       caret.style.display = 'none';
     }
 
+	var caretToggleTimeout = 500;
+
     function toggleCaret() {
       var caret = document.getElementById("caret");
       var visible = caret.style.visibility == "visible";
       caret.style.visibility = visible ? "hidden" : "visible";
     }
 
-    function toggleCaretPeriodically(timeout) {
+    function toggleCaretPeriodically() {
         toggleCaret();
-        setTimeout('toggleCaretPeriodically(' + timeout + ')', timeout);
+        caretToggleTimer = setTimeout('toggleCaretPeriodically()', caretToggleTimeout);
+    }
+
+	function suspendCaretToggling() {
+		if (caretToggleTimer)
+			clearTimeout(caretToggleTimer);
+		var caret = document.getElementById("caret");
+		caret.style.visibility = "visible";
+        caretToggleTimer = setTimeout('toggleCaretPeriodically()', caretToggleTimeout);
     }
 
 	var keyCode = {"backspace": 8, "delete": 46, "return": 13, "left": 37, "right": 39, "a": 65, "e": 69, "k": 75};
