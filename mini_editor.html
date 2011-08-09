@@ -88,7 +88,8 @@
     // Simulate bind() on platforms that don't have it. Copied from https://developer.mozilla.org/en/JavaScript/Reference/Global_Objects/Function/bind
     if (!Function.prototype.bind) {
       Function.prototype.bind = function (oThis) {
-        if (typeof this !== "function") // closest thing possible to the ECMAScript 5 internal IsCallable function
+        // closest thing possible to the ECMAScript 5 internal IsCallable function
+        if (typeof this !== "function")
           throw new TypeError("Function.prototype.bind - what is trying to be fBound is not callable");
 
         var aArgs = Array.prototype.slice.call(arguments, 1),
@@ -128,10 +129,10 @@
 
     // If focus comes from a click, give the click event a chance to set the
     // selection before setting the cursor position
-    editor.addEventListener("focus", function(event) {
+    editor.addEventListener("focus", function (event) {
       setTimeout(positionAndShowCaret.bind(0, event), 0);
     });
-    editor.addEventListener("click", function(event) {
+    editor.addEventListener("click", function (event) {
       setTimeout(positionAndShowCaret.bind(0, event), 0);
     });
 
@@ -151,13 +152,13 @@
       else
         positionCaret(event);
 
-      window.setTimeout(function() {
+      window.setTimeout(function () {
         showCaret();
       }, 0);
     }
 
     function positionCaret() {
-	  suspendCaretToggling(500);
+      suspendCaretToggling(500);
       if (cursorOffset < 0)
         setCaretPositionFromSelection();
       else
@@ -165,7 +166,7 @@
     }
 
     function setSelectionAndCaretPositionFromOffset() {
-	  suspendCaretToggling();
+      suspendCaretToggling();
 
       var selection = window.getSelection();
       var textNode = editor.firstChild;
@@ -185,10 +186,11 @@
 
     var LEFT = true;
     var RIGHT = false;
+
     function setCaretPositionFromSelection(opt_direction) {
       direction = opt_direction || RIGHT;
 
-	  suspendCaretToggling();
+      suspendCaretToggling();
 
       var caret = document.getElementById("caret");
       var selection = window.getSelection();
@@ -206,8 +208,7 @@
       }
 
       var x, rect;
-      if (range.startOffset != range.endOffset ||
-          range.startContainer != range.endContainer) {
+      if (range.startOffset != range.endOffset || range.startContainer != range.endContainer) {
         // Only selection ranges with non-zero size have a bounding rect
         rect = range.getBoundingClientRect();
         if (!rect) {
@@ -274,7 +275,7 @@
       caret.style.display = 'none';
     }
 
-	var caretToggleTimeout = 500;
+    var caretToggleTimeout = 500;
 
     function toggleCaret() {
       var caret = document.getElementById("caret");
@@ -283,94 +284,107 @@
     }
 
     function toggleCaretPeriodically() {
-        toggleCaret();
-        caretToggleTimer = setTimeout('toggleCaretPeriodically()', caretToggleTimeout);
+      toggleCaret();
+      caretToggleTimer = setTimeout('toggleCaretPeriodically()', caretToggleTimeout);
     }
 
-	function suspendCaretToggling() {
-		if (caretToggleTimer)
-			clearTimeout(caretToggleTimer);
-		var caret = document.getElementById("caret");
-		caret.style.visibility = "visible";
-        caretToggleTimer = setTimeout('toggleCaretPeriodically()', caretToggleTimeout);
+    function suspendCaretToggling() {
+      if (caretToggleTimer)
+        clearTimeout(caretToggleTimer);
+      var caret = document.getElementById("caret");
+      caret.style.visibility = "visible";
+      caretToggleTimer = setTimeout('toggleCaretPeriodically()', caretToggleTimeout);
     }
 
-	var keyCode = {"backspace": 8, "delete": 46, "return": 13, "left": 37, "right": 39, "a": 65, "e": 69, "k": 75};
-	var preventDefault = {};
-	var action = {};
+    var keyCode = {
+      "backspace": 8,
+      "delete": 46,
+      "return": 13,
+      "left": 37,
+      "right": 39,
+      "a": 65,
+      "e": 69,
+      "k": 75
+    };
+    var preventDefault = {};
+    var action = {};
 
-	function modifierString(ctrlKey, altKey, shiftKey, metaKey) {
-		var combo = "";
-		if (ctrlKey) combo += "Ctrl";
-		if (altKey) combo += "Alt";
-		if (shiftKey) combo += "Shift";
-		if (metaKey) combo += "Meta";
-		return combo;
-	}
+    function modifierString(ctrlKey, altKey, shiftKey, metaKey) {
+      var combo = "";
+      if (ctrlKey)
+        combo += "Ctrl";
+      if (altKey)
+        combo += "Alt";
+      if (shiftKey)
+        combo += "Shift";
+      if (metaKey)
+        combo += "Meta";
+      return combo;
+    }
 
     function bindMappingPreventDefault(key, modifiers, callback) {
-		var code = keyCode[key];
-		preventDefault[code] = preventDefault[code] || {};
-		preventDefault[code][modifiers] = true;
-		bindMapping(key, modifiers, callback);
-	}
+      var code = keyCode[key];
+      preventDefault[code] = preventDefault[code] || {};
+      preventDefault[code][modifiers] = true;
+      bindMapping(key, modifiers, callback);
+    }
 
-	function bindMapping(key, modifiers, callback) {
-		var code = keyCode[key];
-		action[code] = action[code] || {};
-		action[code][modifiers] = callback;
-	}
+    function bindMapping(key, modifiers, callback) {
+      var code = keyCode[key];
+      action[code] = action[code] || {};
+      action[code][modifiers] = callback;
+    }
 
-	bindMappingPreventDefault("backspace", "", backspace);
-	bindMappingPreventDefault("backspace", "Alt", deleteOneWord.bind(0, LEFT));
-	bindMappingPreventDefault("backspace", "Meta", deleteToEndOfLine.bind(0, LEFT));
-	bindMapping("delete", "", del);
-	bindMapping("delete", "Alt", deleteOneWord.bind(0, RIGHT));
-	bindMappingPreventDefault("delete", "Meta", deleteToEndOfLine.bind(0, RIGHT));
-	bindMapping("return", "", editor.blur.bind(editor));
-	bindMapping("a", "Ctrl", moveCursorToEndOfLine.bind(0, LEFT));
-	bindMapping("e", "Ctrl", moveCursorToEndOfLine.bind(0, RIGHT));
-	bindMapping("k", "Ctrl", deleteToEndOfLine.bind(0, RIGHT));
-	bindMappingPreventDefault("a", "Meta", selectAll);
+    bindMappingPreventDefault("backspace", "", backspace);
+    bindMappingPreventDefault("backspace", "Alt", deleteOneWord.bind(0, LEFT));
+    bindMappingPreventDefault("backspace", "Meta", deleteToEndOfLine.bind(0, LEFT));
+    bindMapping("delete", "", del);
+    bindMapping("delete", "Alt", deleteOneWord.bind(0, RIGHT));
+    bindMappingPreventDefault("delete", "Meta", deleteToEndOfLine.bind(0, RIGHT));
+    bindMapping("return", "", editor.blur.bind(editor));
+    bindMapping("a", "Ctrl", moveCursorToEndOfLine.bind(0, LEFT));
+    bindMapping("e", "Ctrl", moveCursorToEndOfLine.bind(0, RIGHT));
+    bindMapping("k", "Ctrl", deleteToEndOfLine.bind(0, RIGHT));
+    bindMappingPreventDefault("a", "Meta", selectAll);
 
-	function mapLeftRight(key, dir) {
-		var direction = dir;
-		bindMapping(key, "", moveCursorOneCharacter.bind(0, direction, false));
-		bindMapping(key, "Ctrl", moveCursorToEndOfLine.bind(0, direction));
-		bindMapping(key, "Meta", moveCursorToEndOfLine.bind(0, direction));
-		bindMapping(key, "Alt", moveCursorOneWord.bind(0, direction));
-		bindMappingPreventDefault(key, "Shift", moveCursorOneCharacter.bind(0, direction, true));
-		bindMappingPreventDefault(key, "CtrlShift", moveCursorToEndOfLine.bind(0, direction));
-		bindMappingPreventDefault(key, "ShiftMeta", moveCursorToEndOfLine.bind(0, direction));
-		bindMappingPreventDefault(key, "AltShift", moveCursorOneWord.bind(0, direction));
-	}
+    function mapLeftRight(key, dir) {
+      var direction = dir;
+      bindMapping(key, "", moveCursorOneCharacter.bind(0, direction, false));
+      bindMapping(key, "Ctrl", moveCursorToEndOfLine.bind(0, direction));
+      bindMapping(key, "Meta", moveCursorToEndOfLine.bind(0, direction));
+      bindMapping(key, "Alt", moveCursorOneWord.bind(0, direction));
+      bindMappingPreventDefault(key, "Shift", moveCursorOneCharacter.bind(0, direction, true));
+      bindMappingPreventDefault(key, "CtrlShift", moveCursorToEndOfLine.bind(0, direction));
+      bindMappingPreventDefault(key, "ShiftMeta", moveCursorToEndOfLine.bind(0, direction));
+      bindMappingPreventDefault(key, "AltShift", moveCursorOneWord.bind(0, direction));
+    }
 
-	mapLeftRight("left", LEFT);
-	mapLeftRight("right", RIGHT);
+    mapLeftRight("left", LEFT);
+    mapLeftRight("right", RIGHT);
 
-	function cursor(event) {
-	  event.stopPropagation();
+    function cursor(event) {
+      event.stopPropagation();
 
-	  var modifiers = modifierString(event.ctrlKey, event.altKey, event.shiftKey, event.metaKey);
+      var modifiers = modifierString(event.ctrlKey, event.altKey, event.shiftKey, event.metaKey);
 
-	  if (preventDefault[event.keyCode] && preventDefault[event.keyCode][modifiers]) {
-		event.preventDefault();
-	  }
+      if (preventDefault[event.keyCode] && preventDefault[event.keyCode][modifiers]) {
+        event.preventDefault();
+      }
 
-	  if (event.keyCode == keyCode["left"] || event.keyCode == keyCode["right"]) {
-		if (event.shiftKey) {
-		  if (selectionStart < 0)
-			selectionStart = cursorOffset;
-		} else {
-		  selectionStart = -1;
-		}
-	  }
+      if (event.keyCode == keyCode["left"] || event.keyCode == keyCode["right"]) {
+        if (event.shiftKey) {
+          if (selectionStart < 0)
+            selectionStart = cursorOffset;
+        } else {
+          selectionStart = -1;
+        }
+      }
 
-	  if (action[event.keyCode] && action[event.keyCode][modifiers]) {
-		action[event.keyCode][modifiers]();
-		return;
-	  }
-	}
+      if (action[event.keyCode] && action[event.keyCode][modifiers]) {
+        action[event.keyCode][modifiers]();
+        return;
+      }
+    }
 
     function selectAll() {
       document.getSelection().selectAllChildren(editor);
@@ -421,9 +435,9 @@
 
     function moveCursorToEndOfLine(direction) {
       if (direction == LEFT)
-        cursorOffset = 0;
+         cursorOffset = 0;
       else
-        cursorOffset = textLength;
+         cursorOffset = textLength;
 
       setSelectionAndCaretPositionFromOffset();
     }
@@ -472,8 +486,7 @@
       selectionStart = -1;
       var selection = document.getSelection();
       var range = selection.getRangeAt(0);
-      if (!range || range.collapsed ||
-          range.startContainer != editor.firstChild || range.endContainer != editor.firstChild)
+      if (!range || range.collapsed || range.startContainer != editor.firstChild || range.endContainer != editor.firstChild)
         return false;
 
       var textNode = editor.firstChild;
@@ -533,7 +546,7 @@
 
       currentText = editor.textContent;
       if (textLength == 0)
-         editor.textContent = char;
+        editor.textContent = char;
       else if (cursorOffset == textLength)
         editor.textContent = currentText + char;
       else
