@@ -351,7 +351,7 @@
       var direction = dir;
       bindMapping(key, "", moveCursorOneCharacter.bind(0, direction, false));
       bindMapping(key, "Ctrl", moveCursorToEndOfLine.bind(0, direction));
-      bindMapping(key, "Meta", moveCursorToEndOfLine.bind(0, direction));
+      bindMappingPreventDefault(key, "Meta", moveCursorToEndOfLine.bind(0, direction));
       bindMapping(key, "Alt", moveCursorOneWord.bind(0, direction));
       bindMappingPreventDefault(key, "Shift", moveCursorOneCharacter.bind(0, direction, true));
       bindMappingPreventDefault(key, "CtrlShift", moveCursorToEndOfLine.bind(0, direction));
