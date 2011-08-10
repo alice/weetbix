@@ -58,15 +58,15 @@
           </ul>
         <li>Keyboard shortcuts (win)
           <ul>
-            <li>Home goes to beginning of line
-            <li>End goes to end of line
-            <li>Ctrl+left moves left one word
-            <li>Ctrl+right moves right one word
-            <li>Ctrl+a selects ALL the text
-            <li>Holding shift begins selection
-            <li>Releasing shift ends selection
-            <li>Ctrl+backspace deletes one word left
-            <li>Ctrl+delete deletes one word right
+            <li class="strikethrough">Home goes to beginning of line
+            <li class="strikethrough">End goes to end of line
+            <li class="strikethrough">Ctrl+left moves left one word
+            <li class="strikethrough">Ctrl+right moves right one word
+            <li class="strikethrough">Ctrl+a selects ALL the text
+            <li class="strikethrough">Holding shift begins selection
+            <li class="strikethrough">Releasing shift ends selection
+            <li class="strikethrough">Ctrl+backspace deletes one word left
+            <li class="strikethrough">Ctrl+delete deletes one word right
           </ul>
         <li style="font-style: italic">Selection started within text box doesn't extend beyond text box (too hard, Kix doesn't do it)
         <li>Cursor blinking (low priority)
@@ -302,6 +302,8 @@
       "return": 13,
       "left": 37,
       "right": 39,
+      "home": 36,
+      "end": 35,
       "a": 65,
       "e": 69,
       "k": 75
@@ -336,27 +338,43 @@
     }
 
     bindMappingPreventDefault("backspace", "", backspace);
-    bindMappingPreventDefault("backspace", "Alt", deleteOneWord.bind(0, LEFT));
-    bindMappingPreventDefault("backspace", "Meta", deleteToEndOfLine.bind(0, LEFT));
     bindMapping("delete", "", del);
-    bindMapping("delete", "Alt", deleteOneWord.bind(0, RIGHT));
-    bindMappingPreventDefault("delete", "Meta", deleteToEndOfLine.bind(0, RIGHT));
     bindMapping("return", "", editor.blur.bind(editor));
-    bindMapping("a", "Ctrl", moveCursorToEndOfLine.bind(0, LEFT));
-    bindMapping("e", "Ctrl", moveCursorToEndOfLine.bind(0, RIGHT));
-    bindMapping("k", "Ctrl", deleteToEndOfLine.bind(0, RIGHT));
-    bindMappingPreventDefault("a", "Meta", selectAll);
+
+    if (os == OS.MAC) {
+      bindMappingPreventDefault("backspace", "Alt", deleteOneWord.bind(0, LEFT));
+      bindMappingPreventDefault("backspace", "Meta", deleteToEndOfLine.bind(0, LEFT));
+      bindMapping("delete", "Alt", deleteOneWord.bind(0, RIGHT));
+      bindMappingPreventDefault("delete", "Meta", deleteToEndOfLine.bind(0, RIGHT));
+      bindMapping("a", "Ctrl", moveCursorToEndOfLine.bind(0, LEFT));
+      bindMapping("e", "Ctrl", moveCursorToEndOfLine.bind(0, RIGHT));
+      bindMapping("k", "Ctrl", deleteToEndOfLine.bind(0, RIGHT));
+      bindMappingPreventDefault("a", "Meta", selectAll);
+    } else if (os == OS.WIN) {
+      bindMappingPreventDefault("backspace", "Ctrl", deleteOneWord.bind(0, LEFT));
+      bindMapping("delete", "Ctrl", deleteOneWord.bind(0, RIGHT));
+      bindMappingPreventDefault("a", "Ctrl", selectAll);
+      bindMappingPreventDefault("home", "Shift", moveCursorToEndOfLine.bind(0, LEFT));
+      bindMappingPreventDefault("home", "", moveCursorToEndOfLine.bind(0, LEFT));
+      bindMappingPreventDefault("end", "Shift", moveCursorToEndOfLine.bind(0, RIGHT));
+      bindMappingPreventDefault("end", "", moveCursorToEndOfLine.bind(0, RIGHT));
+    }
 
     function mapLeftRight(key, dir) {
       var direction = dir;
       bindMapping(key, "", moveCursorOneCharacter.bind(0, direction, false));
-      bindMapping(key, "Ctrl", moveCursorToEndOfLine.bind(0, direction));
-      bindMappingPreventDefault(key, "Meta", moveCursorToEndOfLine.bind(0, direction));
-      bindMapping(key, "Alt", moveCursorOneWord.bind(0, direction));
       bindMappingPreventDefault(key, "Shift", moveCursorOneCharacter.bind(0, direction, true));
-      bindMappingPreventDefault(key, "CtrlShift", moveCursorToEndOfLine.bind(0, direction));
-      bindMappingPreventDefault(key, "ShiftMeta", moveCursorToEndOfLine.bind(0, direction));
-      bindMappingPreventDefault(key, "AltShift", moveCursorOneWord.bind(0, direction));
+      if (os == OS.MAC) {
+        bindMapping(key, "Ctrl", moveCursorToEndOfLine.bind(0, direction));
+        bindMappingPreventDefault(key, "Meta", moveCursorToEndOfLine.bind(0, direction));
+        bindMapping(key, "Alt", moveCursorOneWord.bind(0, direction));
+        bindMappingPreventDefault(key, "CtrlShift", moveCursorToEndOfLine.bind(0, direction));
+        bindMappingPreventDefault(key, "ShiftMeta", moveCursorToEndOfLine.bind(0, direction));
+        bindMappingPreventDefault(key, "AltShift", moveCursorOneWord.bind(0, direction));
+      } else if (os == OS.WIN) {
+        bindMapping(key, "Ctrl", moveCursorOneWord.bind(0, direction));
+        bindMappingPreventDefault(key, "CtrlShift", moveCursorOneWord.bind(0, direction));
+      }
     }
 
     mapLeftRight("left", LEFT);
@@ -371,7 +389,8 @@
         event.preventDefault();
       }
 
-      if (event.keyCode == keyCode["left"] || event.keyCode == keyCode["right"]) {
+      // TODO handle selection state portably and robustly
+      if (event.keyCode == keyCode["left"] || event.keyCode == keyCode["right"] || event.keyCode == keyCode["home"] || event.keyCode == keyCode["end"] ) {
         if (event.shiftKey) {
           if (selectionStart < 0)
             selectionStart = cursorOffset;
