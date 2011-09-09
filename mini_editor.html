@@ -21,6 +21,28 @@
       height: 1em;
       border: 1px solid black;
       position: absolute;
+
+      -webkit-animation-name: blink;
+      -webkit-animation-duration: 1s;
+      -webkit-animation-iteration-count: infinite;
+    }
+
+    @-webkit-keyframes blink {
+      0% {
+        visibility: visible;
+      }
+
+      50% {
+        visibility: visible;
+      }
+
+      50% {
+        visibility: hidden;
+      }
+
+      100% {
+        visibility: hidden;
+      }
     }
 
     .strikethrough {
@@ -28,10 +50,10 @@
     }
   </style>
 </head>
-<body onload="toggleCaretPeriodically()">
+<body>
   <div class="content">
     <h2><code>role="textbox"</code> test page</h2>
-    <div id="editor" class="editor" style="width: 500px" role="textbox" aria-multiline="false" tabindex=0>Some text in the editor.</div>
+    <div id="editor" class="editor" style="width: 500px" role="textbox" aria-multiline="false" aria-live="polite" tabindex=0>Some text in the editor.</div>
     <p>Features yet to be implemented:
       <ul>
         <li class="strikethrough">Cursor anywhere but at the end of text
@@ -82,7 +104,7 @@
         <li style="strikethrough">Race condition when backspacing to start of text causing cursor to jitter (?)
       </ul>
     </p>
-    <div id="caret" class="caret" style="display: none"/>
+    <div id="caret" class="caret" />
   </div>
   <script>
     // Simulate bind() on platforms that don't have it. Copied from https://developer.mozilla.org/en/JavaScript/Reference/Global_Objects/Function/bind
@@ -158,7 +180,7 @@
     }
 
     function positionCaret() {
-      suspendCaretToggling(500);
+//      suspendCaretToggling(500);
       if (cursorOffset < 0)
         setCaretPositionFromSelection();
       else
@@ -166,7 +188,7 @@
     }
 
     function setSelectionAndCaretPositionFromOffset() {
-      suspendCaretToggling();
+//      suspendCaretToggling();
 
       var selection = window.getSelection();
       var textNode = editor.firstChild;
@@ -190,7 +212,7 @@
     function setCaretPositionFromSelection(opt_direction) {
       direction = opt_direction || RIGHT;
 
-      suspendCaretToggling();
+//      suspendCaretToggling();
 
       var caret = document.getElementById("caret");
       var selection = window.getSelection();
@@ -266,35 +288,35 @@
     function showCaret() {
       var caret = document.getElementById("caret");
       cursorActive = true;
-      caret.style.display = 'block';
+//      caret.style.display = 'block';
     }
 
     function hideCaret() {
       var caret = document.getElementById("caret");
       cursorActive = false;
-      caret.style.display = 'none';
+      caret.style.position = 'left: -200px; top: 0px;';
     }
 
     var caretToggleTimeout = 500;
 
-    function toggleCaret() {
-      var caret = document.getElementById("caret");
-      var visible = caret.style.visibility == "visible";
-      caret.style.visibility = visible ? "hidden" : "visible";
-    }
+<!--     function toggleCaret() { -->
+<!--       var caret = document.getElementById("caret"); -->
+<!--       var visible = caret.style.visibility == "visible"; -->
+<!--       caret.style.visibility = visible ? "hidden" : "visible"; -->
+<!--     } -->
 
-    function toggleCaretPeriodically() {
-      toggleCaret();
-      caretToggleTimer = setTimeout('toggleCaretPeriodically()', caretToggleTimeout);
-    }
+<!--     function toggleCaretPeriodically() { -->
+<!--       toggleCaret(); -->
+<!--       caretToggleTimer = setTimeout('toggleCaretPeriodically()', caretToggleTimeout); -->
+<!--     } -->
 
-    function suspendCaretToggling() {
-      if (caretToggleTimer)
-        clearTimeout(caretToggleTimer);
-      var caret = document.getElementById("caret");
-      caret.style.visibility = "visible";
-      caretToggleTimer = setTimeout('toggleCaretPeriodically()', caretToggleTimeout);
-    }
+<!--     function suspendCaretToggling() { -->
+<!-- //      if (caretToggleTimer) -->
+<!-- //        clearTimeout(caretToggleTimer); -->
+<!--       var caret = document.getElementById("caret"); -->
+<!--       caret.style.visibility = "visible"; -->
+<!-- //      caretToggleTimer = setTimeout('toggleCaretPeriodically()', caretToggleTimeout); -->
+<!--     } -->
 
     var keyCode = {
       "backspace": 8,
