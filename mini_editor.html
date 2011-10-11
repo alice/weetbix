@@ -53,7 +53,23 @@
 </head>
 <body>
   <div class="content">
-    <h2><code>role="textbox"</code> test page</h2>
+    <h2>Native textarea</h2>
+    <textarea style="width: 500px; height: 100px;">
+Here is some text in a textarea.
+    </textarea>
+  </div>
+  <div class="content">
+    <h2>Native text box</h2>
+    <input type="text" style="width: 500px;" placeholder="Here is some text in a text box"></input>
+  </div>
+  <div class="content">
+    <h2>contenteditable</h2>
+    <div contenteditable=true tabindex=0>
+      Here is some text in a contenteditable div.
+    </div>
+  </div>
+  <div class="content">
+    <h2>Javascript-only editor with <code>role="textbox"</code></h2>
     <div id="editor" class="editor" style="width: 500px" role="textbox" tabindex=0>Some text in the editor.</div>
     <div id="caret" class="caret" />
   </div>
