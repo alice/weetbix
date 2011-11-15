@@ -53,60 +53,8 @@
 </head>
 <body>
   <div class="content">
-    <h2><code>role="textbox"</code> comparison page - no ARIA markup</h2>
+    <h2>Javascript-only editor with <code>role="textbox"</code> - no ARIA markup</h2>
     <div id="editor" class="editor" style="width: 500px" tabindex=0 aria-live="polite">Some text in the editor.</div>
-<!--
-    <p>Features yet to be implemented:
-      <ul>
-        <li class="strikethrough">Cursor anywhere but at the end of text
-        <li class="strikethrough">Move cursor using arrow keys
-        <li class="strikethrough">Cursor anywhere but at the end of text actually modifies text at that position
-        <li class="strikethrough">Delete key deletes text to the right of cursor
-        <li class="strikethrough">Delete/backspace deletes selection
-        <li class="strikethrough">Typing replaces selection
-        <li class="strikethrough">Platform detection
-        <li class="strikethrough">Keyboard shortcuts (mac):
-          <ul>
-            <li class="strikethrough">{Ctrl,Cmd}+left goes to beginning of line
-            <li class="strikethrough">Ctrl+a goes to beginning of line
-            <li class="strikethrough">{Ctrl,Cmd}+right goes to end of line
-            <li class="strikethrough">Ctrl+e goes to end of line
-            <li class="strikethrough">Alt+left moves left one word
-            <li class="strikethrough">Alt+right moves right one word
-	    <li class="strikethrough">Ctrl+k deletes to end of line
-            <li class="strikethrough">Cmd+a selects ALL the text
-            <li class="strikethrough">Holding shift begins selection
-            <li class="strikethrough">Releasing shift ends selection
-            <li class="strikethrough">Alt+backspace deletes one word left
-            <li class="strikethrough">Alt+delete deletes one word right
-          </ul>
-        <li>Keyboard shortcuts (win)
-          <ul>
-            <li class="strikethrough">Home goes to beginning of line
-            <li class="strikethrough">End goes to end of line
-            <li class="strikethrough">Ctrl+left moves left one word
-            <li class="strikethrough">Ctrl+right moves right one word
-            <li class="strikethrough">Ctrl+a selects ALL the text
-            <li class="strikethrough">Holding shift begins selection
-            <li class="strikethrough">Releasing shift ends selection
-            <li class="strikethrough">Ctrl+backspace deletes one word left
-            <li class="strikethrough">Ctrl+delete deletes one word right
-          </ul>
-        <li style="font-style: italic">Selection started within text box doesn't extend beyond text box (too hard, Kix doesn't do it)
-        <li>Cursor blinking (low priority)
-        <li>...
-      </ul>
-    </p>
-    <p>Known bugs:
-      <ul>
-        <li class="strikethrough">After cursor placed by mouse click, text typed still goes to end of line
-        <li class="strikethrough">Second click does not move cursor
-        <li class="strikethrough">Deleting all text causes everything to break
-        <li class="strikethrough">Can't type spaces
-        <li style="strikethrough">Race condition when backspacing to start of text causing cursor to jitter (?)
-      </ul>
-    </p>
--->
     <div id="caret" class="caret" />
   </div>
   <script>
