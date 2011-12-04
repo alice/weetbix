@@ -37,8 +37,10 @@ console.log("os: " + os);
 
 Editor = function() {};
 
-var LEFT = true;
-var RIGHT = false;
+var LEFT = false;
+var RIGHT = true;
+var UP = false;
+var DOWN = true;
 
 var KeyCodes = {
   "backspace": 8,
@@ -46,7 +48,9 @@ var KeyCodes = {
   "delete": 46,
   "return": 13,
   "left": 37,
+  "up": 38,
   "right": 39,
+  "down": 40,
   "home": 36,
   "end": 35,
   "a": 65,
@@ -67,43 +71,54 @@ function modifierString(ctrlKey, altKey, shiftKey, metaKey) {
   return combo;
 }
 
-/* The elements to decorate */
+// The elements to decorate
 Editor.prototype.editor_ = null;
 Editor.prototype.caret_ = null;
 
+// Editor attributes
 Editor.prototype.showCaretTimer_ = 0;
 Editor.prototype.cursorOffset_ = -1;
+Editor.prototype.currentColumn_ = 0;
+Editor.prototype.currentLine_ = 0;
 Editor.prototype.caretX_ = 0;
 Editor.prototype.caretY_ = 0;
 Editor.prototype.cursorActive_ = false;
 Editor.prototype.selectionStart_ = -1;
 Editor.prototype.textLength_ = 0;
 
-//    var editor = document.getElementById("editor");
-// caret = document.getElementById("caret");
+// Keep track of the listener functions to add/remove on focus/blur
+Editor.prototype.keydownListener_ = 0;
+Editor.prototype.keypressListener_ = 0;
 
 Editor.prototype.decorate = function(editor, caret) {
   this.editor_ = editor;
-  this.caret_ = caret;
+  this.caret_ = caret;  // TODO(aboxhall): create caret element?
   this.textLength_ = editor.textContent.length;
-
-  editor.addEventListener("keydown", this.cursor.bind(this));
-  editor.addEventListener("keypress", this.type.bind(this));
 
   // If focus comes from a click, give the click event a chance to set the
   // selection before setting the cursor position
   editor.addEventListener("focus", function (event) {
+    // Only listen for keystrokes when focused.
+    this.keydownListener_ = this.cursor.bind(this);
+    this.keypressListener_ = this.type.bind(this);
+    this.editor_.addEventListener("keydown", this.keydownListener_);
+    this.editor_.addEventListener("keypress", this.keypressListener_);
+
     this.showCaretTimer_ = setTimeout(this.positionAndShowCaret.bind(this, event), 0);
   }.bind(this));
   editor.addEventListener("click", function (event) {
     this.showCaretTimer_ = setTimeout(this.positionAndShowCaret.bind(this, event), 0);
   }.bind(this));
 
-  editor.addEventListener("blur", this.hideCaret.bind(this));
-
+  editor.addEventListener("blur", function () {
+    this.editor_.removeEventListener("keydown", this.keydownListener_);
+    this.editor_.removeEventListener("keypress", this.keypressListener_);
+    this.keydownListener_ = 0;
+    this.keypressListener_ = 0;
+    this.hideCaret();
+  }.bind(this));
   this.bindKeystrokes();
 };
-
 
 Editor.prototype.preventDefault_ = {};
 Editor.prototype.action_ = {};
@@ -126,6 +141,9 @@ Editor.prototype.bindKeystrokes = function() {
   this.bindMapping("delete", "", this.del.bind(this));
   this.bindMapping("return", "", this.editor_.blur.bind(this.editor_));
   this.bindMapping("tab", "", this.editor_.blur.bind(this.editor_));
+  this.bindMapping("up", "", this.moveCursorOneLine(this, UP));
+  this.bindMapping("down", "", this.moveCursorOneLine(this, DOWN));
+
 
   if (os == OS.MAC) {
     this.bindMappingPreventDefault("backspace", "Alt", this.deleteOneWord.bind(this, LEFT));
@@ -150,7 +168,6 @@ Editor.prototype.bindKeystrokes = function() {
   this.mapLeftRight("right", RIGHT);
 };
 
-
 Editor.prototype.mapLeftRight = function(key, dir) {
   var direction = dir;
   this.bindMapping(key, "", this.moveCursorOneCharacter.bind(this, direction, false));
@@ -168,14 +185,11 @@ Editor.prototype.mapLeftRight = function(key, dir) {
   }
 };
 
-
-
 Editor.prototype.positionAndShowCaret = function(event) {
   if (event.type == "click")
     this.setCaretPositionFromSelection();
   else
     this.positionCaret(event);
-  // TODO(aboxhall): bind
   this.showCaretTimer_ = window.setTimeout(this.showCaret.bind(this), 0);
 };
 
@@ -209,7 +223,7 @@ Editor.prototype.setCaretPositionFromSelection = function(opt_direction) {
 
   // TODO(aboxhall): detect selection outside editor and ignore
   if (!selection.rangeCount) {
-    if (this.cursorOffset__ == -1)
+    if (this.cursorOffset_ == -1)
       this.cursorOffset_ = this.textLength_;
     this.setSelectionAndCaretPositionFromOffset();
   }
@@ -246,17 +260,6 @@ Editor.prototype.setCaretPositionFromSelection = function(opt_direction) {
     var newRange = document.createRange();
 
     while (left > 0 || right < max) {
-      if (left > 0) {
-        left--;
-        newRange.setStart(node, left);
-        newRange.setEnd(node, pos);
-        rect = newRange.getBoundingClientRect();
-        if (rect) {
-          x = rect.right;
-          this.cursorOffset_ = newRange.endOffset;
-          break;
-        }
-      }
       if (right < max) {
         right++;
         newRange.setStart(node, pos);
@@ -265,6 +268,17 @@ Editor.prototype.setCaretPositionFromSelection = function(opt_direction) {
         if (rect) {
           x = rect.left;
           this.cursorOffset_ = newRange.startOffset;
+          break;
+        }
+      }
+      if (left > 0) {
+        left--;
+        newRange.setStart(node, left);
+        newRange.setEnd(node, pos);
+        rect = newRange.getBoundingClientRect();
+        if (rect) {
+          x = rect.right;
+          this.cursorOffset_ = newRange.endOffset;
           break;
         }
       }
@@ -278,6 +292,7 @@ Editor.prototype.setCaretPositionFromSelection = function(opt_direction) {
 
 Editor.prototype.showCaret = function() {
   this.cursorActive_ = true;
+  this.caret_.style.webkitAnimationName = '';
   this.caret_.style.webkitAnimationName = 'blink';
 };
 
@@ -331,6 +346,10 @@ Editor.prototype.moveCursorOneCharacter = function(direction, inSelection) {
 Editor.prototype.moveCursorOneWord = function(direction) {
   this.cursorOffset_ = this.offsetOfNextWordBreak(direction);
   this.setSelectionAndCaretPositionFromOffset();
+};
+
+Editor.prototype.moveCursorOneLine = function(direction) {
+  this.cursorOffset_ = 0;
 };
 
 Editor.prototype.offsetOfNextWordBreak = function(direction) {
