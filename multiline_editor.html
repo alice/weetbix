@@ -1,0 +1,68 @@
+<!DOCTYPE html public>
+<html>
+<head>
+  <style>
+    .content {
+      margin: 20px;
+    }
+
+    .editor {
+      border: 1px dotted grey;
+      padding: 2px;
+      white-space: pre;
+    }
+
+    .editor:focus {
+      border: 1px solid black;
+    }
+
+    .caret {
+      width: 0px;
+      height: 1em;
+      border: 1px solid black;
+      position: absolute;
+      left: -200px;
+      top: 0px;
+
+      -webkit-animation-duration: 1s;
+      -webkit-animation-iteration-count: infinite;
+    }
+
+    @-webkit-keyframes blink {
+      0% {
+        visibility: visible;
+      }
+
+      50% {
+        visibility: visible;
+      }
+
+      50% {
+        visibility: hidden;
+      }
+
+      100% {
+        visibility: hidden;
+      }
+    }
+
+    .strikethrough {
+      text-decoration: line-through;
+    }
+  </style>
+</head>
+<body>
+  <div class="content">
+    <h2>Javascript-only editor with <code>role="textbox"</code></h2>
+    <div id="editor" class="editor" style="width: 500px" role="textbox" aria-multiline="true" tabindex=0>Line 0.
+Line 1.
+Line 2.</div>
+    <div id="caret" class="caret"></div>
+  </div>
+  <script type="text/javascript" src="./editor.js"></script>
+  <script type="text/javascript">
+    var editor = new Editor();
+    editor.decorate(document.getElementById('editor'), document.getElementById('caret'));
+  </script>
+</body>
+</html>
