@@ -75,6 +75,9 @@ function modifierString(ctrlKey, altKey, shiftKey, metaKey) {
 Editor.prototype.editor_ = null;
 Editor.prototype.caret_ = null;
 
+// The content of the editor
+Editor.prototype.lines_ = [];
+
 // Editor attributes
 Editor.prototype.showCaretTimer_ = 0;
 Editor.prototype.cursorOffset_ = -1;
@@ -92,7 +95,19 @@ Editor.prototype.keypressListener_ = 0;
 
 Editor.prototype.decorate = function(editor, caret) {
   this.editor_ = editor;
-  this.caret_ = caret;  // TODO(aboxhall): create caret element?
+  // TODO(aboxhall) split editor into divs
+  // assume text content needs to be split up regardless
+  var lines = editor.textContent.split("\n");
+  editor.innerHTML = "";
+  for (var i = 0; i < lines.length; i++) {
+    var content = document.createTextNode(lines[i]);
+    var line = document.createElement("div");
+    line.appendChild(content);
+    this.lines_.push(line);
+    editor.appendChild(line);
+  }
+
+  this.caret_ = caret;  // NOTE(aboxhall): create caret element?
   this.textLength_ = editor.textContent.length;
 
   // If focus comes from a click, give the click event a chance to set the
