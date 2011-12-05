@@ -156,8 +156,8 @@ Editor.prototype.bindKeystrokes = function() {
   this.bindMapping("delete", "", this.del.bind(this));
   this.bindMapping("return", "", this.editor_.blur.bind(this.editor_));
   this.bindMapping("tab", "", this.editor_.blur.bind(this.editor_));
-  this.bindMapping("up", "", this.moveCursorOneLine(this, UP));
-  this.bindMapping("down", "", this.moveCursorOneLine(this, DOWN));
+  this.bindMapping("up", "", this.moveCursorOneLine.bind(this, UP));
+  this.bindMapping("down", "", this.moveCursorOneLine.bind(this, DOWN));
 
 
   if (os == OS.MAC) {
@@ -358,10 +358,20 @@ Editor.prototype.selectAll = function() {
 };
 
 Editor.prototype.moveCursorOneCharacter = function(direction, inSelection) {
-  if (direction == LEFT && this.cursorOffset_ != 0) {
-    this.cursorOffset_--;
-  } else if (direction == RIGHT && this.cursorOffset_ != this.textLength_) {
-    this.cursorOffset_++;
+  if (direction == LEFT) {
+    if (this.cursorOffset_ > 0) {
+      this.cursorOffset_--;
+    } else if (this.currentLine_ > 0) {
+      this.currentLine_--;
+      this.cursorOffset_ = this.lines_[this.currentLine_].textContent.length;
+    }
+  } else {
+    if (this.cursorOffset_ < this.lines_[this.currentLine_].textContent.length) {
+      this.cursorOffset_++;
+    } else if (this.currentLine_ < this.lines_.length - 1) {
+      this.currentLine_++;
+      this.cursorOffset_ = 0;
+    }
   }
   this.setSelectionAndCaretPositionFromOffset();
 };
@@ -372,7 +382,16 @@ Editor.prototype.moveCursorOneWord = function(direction) {
 };
 
 Editor.prototype.moveCursorOneLine = function(direction) {
-  this.cursorOffset_ = 0;
+  if (direction == UP && this.currentLine_ == 0 || direction == DOWN && this.currentLine_ == this.lines_.length)
+    return;
+
+  if (direction == UP)
+    this.currentLine_--;
+  else
+    this.currentLine_++;
+
+  this.cursorOffset_ = Math.min(this.cursorOffset_, this.lines_[this.currentLine_].textContent.length);
+  this.setSelectionAndCaretPositionFromOffset();
 };
 
 Editor.prototype.offsetOfNextWordBreak = function(direction) {
