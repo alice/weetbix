@@ -311,11 +311,13 @@ Editor.prototype.setCaretPositionFromSelection = function(opt_direction) {
   caretY = rect.top + window.pageYOffset;
   this.caret_.style.left = caretX + 'px';
   this.caret_.style.top = caretY + 'px';
+  this.showCaret();
 };
 
 Editor.prototype.showCaret = function() {
   this.cursorActive_ = true;
-  this.caret_.style.webkitAnimationName = '';
+  this.caret_.style.webkitAnimationName = 'none';
+  window.getComputedStyle(this.caret_).left;  // force style recalculation :C
   this.caret_.style.webkitAnimationName = 'blink';
 };
 
@@ -377,7 +379,9 @@ Editor.prototype.moveCursorOneCharacter = function(direction, inSelection) {
 };
 
 Editor.prototype.moveCursorOneWord = function(direction) {
-  this.cursorOffset_ = this.offsetOfNextWordBreak(direction);
+  var nextWordBreak = this.positionOfNextWordBreak(direction);
+  this.currentLine_ = nextWordBreak.lineNumber;
+  this.cursorOffset_ = nextWordBreak.cursorOffset;
   this.setSelectionAndCaretPositionFromOffset();
 };
 
@@ -394,31 +398,42 @@ Editor.prototype.moveCursorOneLine = function(direction) {
   this.setSelectionAndCaretPositionFromOffset();
 };
 
-Editor.prototype.offsetOfNextWordBreak = function(direction) {
-  var textContent = this.editor_.textContent;
+Editor.prototype.positionOfNextWordBreak = function(direction) {
+  var cursorOffset = this.cursorOffset_;
+  var lineNumber = this.lineNumber_;
+
   if (direction == LEFT) {
-    var textToLeftOfCursor = textContent.substring(0, this.cursorOffset_);
-    var textToRightOfLastFoundBreak = textToLeftOfCursor;
-    var textToLeftOfLastFoundBreak = "";
-    while (textToRightOfLastFoundBreak) {
-      var charsToNextWordBreak = textToRightOfLastFoundBreak.search(/(\s\b)/);
-      if (charsToNextWordBreak != -1) {
-        charsToNextWordBreak += 1; // space belongs to the left
-        textToLeftOfLastFoundBreak += textToRightOfLastFoundBreak.substring(0, charsToNextWordBreak)
-        textToRightOfLastFoundBreak = textToRightOfLastFoundBreak.substring(charsToNextWordBreak);
-      } else {
-        break;
+    while(lineNumber > 0) {
+      var textContent = this.lines_[lineNumber].textContent;
+
+      var textToLeftOfCursor = textContent.substring(0, cursorOffset);
+      var textToRightOfLastFoundBreak = textToLeftOfCursor;
+      var offsetOfLastFoundBreak = 0;
+      var textToLeftOfLastFoundBreak = "";
+      while (textToRightOfLastFoundBreak) {
+        var charsToNextWordBreak = textToRightOfLastFoundBreak.search(/(\s\b)/);
+        if (charsToNextWordBreak != -1) {
+          charsToNextWordBreak += 1; // space belongs to the left TODO(aboxhall) generalise
+          textToLeftOfLastFoundBreak += textToRightOfLastFoundBreak.substring(0, charsToNextWordBreak);
+          offsetOfLastFoundBreak += charsToNextWordBreak;
+          textToRightOfLastFoundBreak = textToRightOfLastFoundBreak.substring(charsToNextWordBreak);
+        } else {
+          break;
+        }
       }
+      cursorOffset = offsetOfLastFoundBreak;
     }
-    return textToLeftOfLastFoundBreak.length;
   } else {
-    var textToRightOfCursor = textContent.substring(this.cursorOffset_);
-    var charsToNextWordBreak = textToRightOfCursor.search(/\w\b/);
-    if (charsToNextWordBreak == -1)
-      return this.textLength_;
-    else
-      return this.cursorOffset_ + charsToNextWordBreak + 1 // no lookbehind :(
+    while(lineNumber < this.lines_.length - 1) {
+      var textToRightOfCursor = textContent.substring(this.cursorOffset_);
+      var charsToNextWordBreak = textToRightOfCursor.search(/\w\b/);
+      if (charsToNextWordBreak == -1)
+        cursorOffset = this.textLength_;
+      else
+        cursorOffset = this.cursorOffset_ + charsToNextWordBreak + 1 // no lookbehind :(
+    }
   }
+  return {"cursorOffset": cursorOffset, "lineNumber": lineNumber};
 };
 
 Editor.prototype.moveCursorToEndOfLine = function(direction) {
