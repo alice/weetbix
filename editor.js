@@ -217,7 +217,7 @@ Editor.prototype.positionCaret = function() {
 
 Editor.prototype.setSelectionAndCaretPositionFromOffset = function() {
   var selection = window.getSelection();
-  var textNode = this.editor_.firstChild;
+  var textNode = this.lines_[this.currentLine_].firstChild;
   if (this.selectionStart_ < 0) {
     selection.setBaseAndExtent(textNode, this.cursorOffset_, textNode, this.cursorOffset_);
     this.setCaretPositionFromSelection();
@@ -261,9 +261,13 @@ Editor.prototype.setCaretPositionFromSelection = function(opt_direction) {
     if (direction == RIGHT) {
       x = rect.right + window.pageXOffset;
       this.cursorOffset_ = range.endOffset;
+      var div = range.endContainer.parentNode;
+      this.currentLine_ = this.lines_.indexOf(div);
     } else {
       x = rect.left + window.pageXOffset;
       this.cursorOffset_ = range.startOffset;
+      var div = range.startContainer.parentNode;
+      this.currentLine_ = this.lines_.indexOf(div);
     }
   } else {
     // create a new selection which is >0 width and get the position from that
@@ -283,6 +287,8 @@ Editor.prototype.setCaretPositionFromSelection = function(opt_direction) {
         if (rect) {
           x = rect.left;
           this.cursorOffset_ = newRange.startOffset;
+          var div = range.startContainer.parentNode;
+          this.currentLine_ = this.lines_.indexOf(div);
           break;
         }
       }
@@ -294,6 +300,8 @@ Editor.prototype.setCaretPositionFromSelection = function(opt_direction) {
         if (rect) {
           x = rect.right;
           this.cursorOffset_ = newRange.endOffset;
+          var div = range.endContainer.parentNode;
+          this.currentLine_ = this.lines_.indexOf(div);
           break;
         }
       }
