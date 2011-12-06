@@ -168,11 +168,11 @@ Editor.prototype.bindKeystrokes = function() {
     this.bindMapping("a", "Ctrl", this.moveCursorToEndOfLine.bind(this, LEFT));
     this.bindMapping("e", "Ctrl", this.moveCursorToEndOfLine.bind(this, RIGHT));
     this.bindMapping("k", "Ctrl", this.deleteToEndOfLine.bind(this, RIGHT));
-    this.bindMappingPreventDefault("a", "Meta", this.selectAll);
+    this.bindMappingPreventDefault("a", "Meta", this.selectAll.bind(this));
   } else if (os == OS.WIN) {
     this.bindMappingPreventDefault("backspace", "Ctrl", this.deleteOneWord.bind(this, LEFT));
     this.bindMapping("delete", "Ctrl", this.deleteOneWord.bind(this, RIGHT));
-    this.bindMappingPreventDefault("a", "Ctrl", this.selectAll);
+    this.bindMappingPreventDefault("a", "Ctrl", this.selectAll.bind(this));
     this.bindMappingPreventDefault("home", "Shift", this.moveCursorToEndOfLine.bind(this, LEFT));
     this.bindMappingPreventDefault("home", "", this.moveCursorToEndOfLine.bind(this, LEFT));
     this.bindMappingPreventDefault("end", "Shift", this.moveCursorToEndOfLine.bind(this, RIGHT));
@@ -400,41 +400,75 @@ Editor.prototype.moveCursorOneLine = function(direction) {
 
 Editor.prototype.positionOfNextWordBreak = function(direction) {
   var cursorOffset = this.cursorOffset_;
-  var lineNumber = this.lineNumber_;
+  var lineNumber = this.currentLine_;
 
   if (direction == LEFT) {
-    while(lineNumber > 0) {
-      var textContent = this.lines_[lineNumber].textContent;
-
-      var textToLeftOfCursor = textContent.substring(0, cursorOffset);
-      var textToRightOfLastFoundBreak = textToLeftOfCursor;
-      var offsetOfLastFoundBreak = 0;
-      var textToLeftOfLastFoundBreak = "";
-      while (textToRightOfLastFoundBreak) {
-        var charsToNextWordBreak = textToRightOfLastFoundBreak.search(/(\s\b)/);
-        if (charsToNextWordBreak != -1) {
-          charsToNextWordBreak += 1; // space belongs to the left TODO(aboxhall) generalise
-          textToLeftOfLastFoundBreak += textToRightOfLastFoundBreak.substring(0, charsToNextWordBreak);
-          offsetOfLastFoundBreak += charsToNextWordBreak;
-          textToRightOfLastFoundBreak = textToRightOfLastFoundBreak.substring(charsToNextWordBreak);
-        } else {
-          break;
-        }
+    while(lineNumber >= 0) {
+      var cursorOffsetForLine = this.findPreviousWordBreak(lineNumber, cursorOffset);
+      if (cursorOffsetForLine != -1) {
+        cursorOffset = cursorOffsetForLine;
+        break;
+      } else if (lineNumber == 0) {
+        cursorOffset = 0;
+        break;
       }
-      cursorOffset = offsetOfLastFoundBreak;
+
+      lineNumber--;
+      cursorOffset = this.lines_[lineNumber].textContent.length;
     }
   } else {
-    while(lineNumber < this.lines_.length - 1) {
-      var textToRightOfCursor = textContent.substring(this.cursorOffset_);
-      var charsToNextWordBreak = textToRightOfCursor.search(/\w\b/);
-      if (charsToNextWordBreak == -1)
-        cursorOffset = this.textLength_;
-      else
-        cursorOffset = this.cursorOffset_ + charsToNextWordBreak + 1 // no lookbehind :(
+    while(lineNumber <= this.lines_.length - 1) {
+      var cursorOffsetForLine = this.findNextWordBreak(lineNumber, cursorOffset);
+      if (cursorOffsetForLine != -1) {
+        cursorOffset = cursorOffsetForLine;
+        break;
+      } else if (lineNumber == this.lines_.length - 1) {
+        cursorOffset = this.lines_[lineNumber].textContent.length;
+        break;
+      }
+    
+      lineNumber++;
+      cursorOffset = 0;
     }
   }
-  return {"cursorOffset": cursorOffset, "lineNumber": lineNumber};
+  var result = {cursorOffset: cursorOffset, lineNumber: lineNumber};
+  return result;
 };
+
+Editor.prototype.findPreviousWordBreak = function(lineNumber, cursorOffset) {
+  var textContent = this.lines_[lineNumber].textContent;
+
+  var textToLeftOfCursor = textContent.substring(0, cursorOffset);
+  var textToRightOfLastFoundBreak = textToLeftOfCursor;
+  var offsetOfLastFoundBreak = null;
+  var textToLeftOfLastFoundBreak = "";
+  while (textToRightOfLastFoundBreak) {
+    var charsToNextWordBreak = textToRightOfLastFoundBreak.search(/.\b\w/);
+    if (charsToNextWordBreak != -1) {
+      charsToNextWordBreak += 1; // consume character before word break
+      textToLeftOfLastFoundBreak += textToRightOfLastFoundBreak.substring(0, charsToNextWordBreak);
+      offsetOfLastFoundBreak = charsToNextWordBreak + offsetOfLastFoundBreak; // convert undefined to 0 if necessary
+      textToRightOfLastFoundBreak = textToRightOfLastFoundBreak.substring(charsToNextWordBreak);
+    } else if (offsetOfLastFoundBreak == null && textToRightOfLastFoundBreak.search(/\b\w/) == 0) {
+      // Only word break is at the start of the line
+      offsetOfLastFoundBreak = 0;
+      break;
+    } else {
+      break;
+    }
+  }
+  return (offsetOfLastFoundBreak !== null ? offsetOfLastFoundBreak : -1);
+}
+
+Editor.prototype.findNextWordBreak = function(lineNumber, cursorOffset) {
+  var textContent = this.lines_[lineNumber].textContent;
+  var textToRightOfCursor = textContent.substring(cursorOffset);
+  var charsToNextWordBreak = textToRightOfCursor.search(/\w\b/);
+  if (charsToNextWordBreak == -1)
+    return -1;
+  else
+    return cursorOffset + charsToNextWordBreak + 1 // no lookbehind :(
+}
 
 Editor.prototype.moveCursorToEndOfLine = function(direction) {
   if (direction == LEFT)
