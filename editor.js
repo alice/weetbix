@@ -87,7 +87,6 @@ Editor.prototype.caretX_ = 0;
 Editor.prototype.caretY_ = 0;
 Editor.prototype.cursorActive_ = false;
 Editor.prototype.selectionStart_ = -1;
-Editor.prototype.textLength_ = 0;
 
 // Keep track of the listener functions to add/remove on focus/blur
 Editor.prototype.keydownListener_ = 0;
@@ -108,7 +107,6 @@ Editor.prototype.decorate = function(editor, caret) {
   }
 
   this.caret_ = caret;  // NOTE(aboxhall): create caret element?
-  this.textLength_ = editor.textContent.length;
 
   // If focus comes from a click, give the click event a chance to set the
   // selection before setting the cursor position
@@ -200,6 +198,14 @@ Editor.prototype.mapLeftRight = function(key, dir) {
   }
 };
 
+Editor.prototype.currentLine = function() {
+  return this.lines_[this.currentLine_];
+};
+
+Editor.prototype.currentLineLength = function() {
+  return this.currentLine().textContent.length;
+};
+
 Editor.prototype.positionAndShowCaret = function(event) {
   if (event.type == "click")
     this.setCaretPositionFromSelection();
@@ -217,7 +223,7 @@ Editor.prototype.positionCaret = function() {
 
 Editor.prototype.setSelectionAndCaretPositionFromOffset = function() {
   var selection = window.getSelection();
-  var textNode = this.lines_[this.currentLine_].firstChild;
+  var textNode = this.currentLine().firstChild;
   if (this.selectionStart_ < 0) {
     selection.setBaseAndExtent(textNode, this.cursorOffset_, textNode, this.cursorOffset_);
     this.setCaretPositionFromSelection();
@@ -238,8 +244,10 @@ Editor.prototype.setCaretPositionFromSelection = function(opt_direction) {
 
   // TODO(aboxhall): detect selection outside editor and ignore
   if (!selection.rangeCount) {
-    if (this.cursorOffset_ == -1)
-      this.cursorOffset_ = this.textLength_;
+    if (this.cursorOffset_ == -1) {
+      this.currentLine_ = this.lines_.length;
+      this.cursorOffset_ = this.currentLineLength();
+    }
     this.setSelectionAndCaretPositionFromOffset();
   }
 
@@ -355,7 +363,8 @@ Editor.prototype.cursor = function(event) {
 
 Editor.prototype.selectAll = function() {
   document.getSelection().selectAllChildren(this.editor_);
-  this.cursorOffset_ = this.textLength_;
+  this.currentLine_ = this.lines_.length;
+  this.cursorOffset_ = this.currentLineLength();
   this.setCaretPositionFromSelection(RIGHT);
 };
 
@@ -365,10 +374,10 @@ Editor.prototype.moveCursorOneCharacter = function(direction, inSelection) {
       this.cursorOffset_--;
     } else if (this.currentLine_ > 0) {
       this.currentLine_--;
-      this.cursorOffset_ = this.lines_[this.currentLine_].textContent.length;
+      this.cursorOffset_ = this.currentLineLength();
     }
   } else {
-    if (this.cursorOffset_ < this.lines_[this.currentLine_].textContent.length) {
+    if (this.cursorOffset_ < this.currentLineLength()) {
       this.cursorOffset_++;
     } else if (this.currentLine_ < this.lines_.length - 1) {
       this.currentLine_++;
@@ -394,7 +403,7 @@ Editor.prototype.moveCursorOneLine = function(direction) {
   else
     this.currentLine_++;
 
-  this.cursorOffset_ = Math.min(this.cursorOffset_, this.lines_[this.currentLine_].textContent.length);
+  this.cursorOffset_ = Math.min(this.cursorOffset_, this.currentLineLength());
   this.setSelectionAndCaretPositionFromOffset();
 };
 
@@ -447,7 +456,7 @@ Editor.prototype.findPreviousWordBreak = function(lineNumber, cursorOffset) {
     if (charsToNextWordBreak != -1) {
       charsToNextWordBreak += 1; // consume character before word break
       textToLeftOfLastFoundBreak += textToRightOfLastFoundBreak.substring(0, charsToNextWordBreak);
-      offsetOfLastFoundBreak = charsToNextWordBreak + offsetOfLastFoundBreak; // convert undefined to 0 if necessary
+      offsetOfLastFoundBreak += charsToNextWordBreak;
       textToRightOfLastFoundBreak = textToRightOfLastFoundBreak.substring(charsToNextWordBreak);
     } else if (offsetOfLastFoundBreak == null && textToRightOfLastFoundBreak.search(/\b\w/) == 0) {
       // Only word break is at the start of the line
@@ -471,29 +480,29 @@ Editor.prototype.findNextWordBreak = function(lineNumber, cursorOffset) {
 }
 
 Editor.prototype.moveCursorToEndOfLine = function(direction) {
-  if (direction == LEFT)
-     this.cursorOffset_ = 0;
-  else
-     this.cursorOffset_ = this.textLength_;
-
+  if (direction == LEFT){
+    this.cursorOffset_ = 0;
+  } else {
+    this.cursorOffset_ = this.currentLineLength();
+  }
   this.setSelectionAndCaretPositionFromOffset();
 };
 
 Editor.prototype.deleteRange = function(start, end) {
+  // FIXME(aboxhall)
   if (start == end || end < start)
     return;
   if (start < 0)
     start = 0;
-  if (end > this.textLength_)
-    end = this.textLength_;
+  if (end > this.currentLineLength())
+    end = this.currentLineLength();
 
-  if (start == 0 && end == this.textLength_) {
-    this.textLength_ = 0;
-    this.editor_.innerHTML = "&nbsp;";
+  if (start == 0 && end == this.currentLineLength()) {
+    // FIXME(aboxhall)
+    this.currentLine().innerHTML = "&nbsp;";
     this.cursorOffset_ = 0;
   } else {
-    this.editor_.firstChild.deleteData(start, end - start);
-    this.textLength_ = this.editor_.textContent.length;
+    this.currentLine().firstChild.deleteData(start, end - start);
   }
 };
 
@@ -514,7 +523,7 @@ Editor.prototype.deleteToEndOfLine = function(direction) {
     this.deleteRange(0, this.cursorOffset_);
     this.cursorOffset_ = 0;
   } else {
-    this.deleteRange(this.cursorOffset_, this.textLength_);
+    this.deleteRange(this.cursorOffset_, this.currentLineLength());
   }
   this.setSelectionAndCaretPositionFromOffset();
 };
@@ -537,19 +546,15 @@ Editor.prototype.deleteSelection = function() {
 };
 
 Editor.prototype.deleteChar = function(direction) {
-  console.log("this.cursorOffset_ = " + this.cursorOffset_);
   if (this.textLength_ == 0) {
-    console.log("textLength == 0");
     return;
   }
 
   if (direction == LEFT && this.cursorOffset_ == 0) {
-    console.log("direction == LEFT && this.cursorOffset_ == 0");
     return;
   }
 
   if (direction == RIGHT && this.cursorOffset_ == this.textLength_) {
-    console.log("direction == RIGHT && this.cursorOffset_ == textLength");
     return;
   }
 
@@ -581,15 +586,14 @@ Editor.prototype.type = function(event) {
     var char = String.fromCharCode(event.charCode);
   }
 
-  var currentText = this.editor_.textContent;
-  if (this.textLength_ == 0)
-    this.editor_.textContent = char;
+  var currentText = this.currentLine().textContent;
+  if (currentText.length == 0)
+    this.currentLine().textContent = char;
   else if (this.cursorOffset_ == this.textLength_)
-    this.editor_.textContent = currentText + char;
+    this.currentLine().textContent = currentText + char;
   else
-    this.editor_.textContent = currentText.substring(0, this.cursorOffset_) + char + currentText.substring(this.cursorOffset_, this.textLength_);
+    this.currentLine().textContent = currentText.substring(0, this.cursorOffset_) + char + currentText.substring(this.cursorOffset_, this.textLength_);
 
-  this.textLength_ = this.editor_.textContent.length;
   this.cursorOffset_++;
   this.positionCaret();
 
