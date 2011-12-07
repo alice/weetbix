@@ -94,14 +94,13 @@ Editor.prototype.keypressListener_ = 0;
 
 Editor.prototype.decorate = function(editor, caret) {
   this.editor_ = editor;
-  // TODO(aboxhall) split editor into divs
-  // assume text content needs to be split up regardless
+
   var lines = editor.textContent.split("\n");
   editor.innerHTML = "";
   for (var i = 0; i < lines.length; i++) {
-    var content = document.createTextNode(lines[i]);
+//    var content = document.createTextNode(lines[i]);
     var line = document.createElement("div");
-    line.appendChild(content);
+    line.textContent = lines[i];
     this.lines_.push(line);
     editor.appendChild(line);
   }
@@ -152,7 +151,10 @@ Editor.prototype.bindMapping = function(key, modifiers, callback) {
 Editor.prototype.bindKeystrokes = function() {
   this.bindMappingPreventDefault("backspace", "", this.backspace.bind(this));
   this.bindMapping("delete", "", this.del.bind(this));
-  this.bindMapping("return", "", this.editor_.blur.bind(this.editor_));
+  if (this.editor_.getAttribute("aria-multiline"))
+    this.bindMapping("return", "", this.insertNewlineAtCursor.bind(this, true));
+  else
+    this.bindMapping("return", "", this.editor_.blur.bind(this.editor_));
   this.bindMapping("tab", "", this.editor_.blur.bind(this.editor_));
   this.bindMapping("up", "", this.moveCursorOneLine.bind(this, UP));
   this.bindMapping("down", "", this.moveCursorOneLine.bind(this, DOWN));
@@ -197,6 +199,14 @@ Editor.prototype.mapLeftRight = function(key, dir) {
     this.bindMappingPreventDefault(key, "CtrlShift", this.moveCursorOneWord.bind(this, direction));
   }
 };
+
+Editor.prototype.numLines = function() {
+  return this.lines_.length;
+};
+
+Editor.prototype.maxLineNumber = function() {
+  return this.numLines() - 1;
+}
 
 Editor.prototype.currentLine = function() {
   return this.lines_[this.currentLine_];
@@ -245,7 +255,7 @@ Editor.prototype.setCaretPositionFromSelection = function(opt_direction) {
   // TODO(aboxhall): detect selection outside editor and ignore
   if (!selection.rangeCount) {
     if (this.cursorOffset_ == -1) {
-      this.currentLine_ = this.lines_.length;
+      this.currentLine_ = this.numLines();
       this.cursorOffset_ = this.currentLineLength();
     }
     this.setSelectionAndCaretPositionFromOffset();
@@ -363,7 +373,7 @@ Editor.prototype.cursor = function(event) {
 
 Editor.prototype.selectAll = function() {
   document.getSelection().selectAllChildren(this.editor_);
-  this.currentLine_ = this.lines_.length;
+  this.currentLine_ = this.numLines();
   this.cursorOffset_ = this.currentLineLength();
   this.setCaretPositionFromSelection(RIGHT);
 };
@@ -379,7 +389,7 @@ Editor.prototype.moveCursorOneCharacter = function(direction, inSelection) {
   } else {
     if (this.cursorOffset_ < this.currentLineLength()) {
       this.cursorOffset_++;
-    } else if (this.currentLine_ < this.lines_.length - 1) {
+    } else if (this.currentLine_ < this.maxLineNumber()) {
       this.currentLine_++;
       this.cursorOffset_ = 0;
     }
@@ -395,7 +405,7 @@ Editor.prototype.moveCursorOneWord = function(direction) {
 };
 
 Editor.prototype.moveCursorOneLine = function(direction) {
-  if (direction == UP && this.currentLine_ == 0 || direction == DOWN && this.currentLine_ == this.lines_.length)
+  if (direction == UP && this.currentLine_ == 0 || direction == DOWN && this.currentLine_ == this.maxLineNumber())
     return;
 
   if (direction == UP)
@@ -426,12 +436,12 @@ Editor.prototype.positionOfNextWordBreak = function(direction) {
       cursorOffset = this.lines_[lineNumber].textContent.length;
     }
   } else {
-    while(lineNumber <= this.lines_.length - 1) {
+    while(lineNumber <= this.maxLineNumber()) {
       var cursorOffsetForLine = this.findNextWordBreak(lineNumber, cursorOffset);
       if (cursorOffsetForLine != -1) {
         cursorOffset = cursorOffsetForLine;
         break;
-      } else if (lineNumber == this.lines_.length - 1) {
+      } else if (lineNumber == this.maxLineNumber()) {
         cursorOffset = this.lines_[lineNumber].textContent.length;
         break;
       }
@@ -560,7 +570,7 @@ Editor.prototype.deleteChar = function(direction) {
   }
 
   if (direction == RIGHT && this.cursorOffset_ == this.currentLineLength()) {
-    if (this.currentLine_ == this.lines_.length - 1)
+    if (this.currentLine_ == this.maxLineNumber())
       return;
 
     this.joinLineAfter(this.currentLine_);
@@ -581,6 +591,26 @@ Editor.prototype.joinLineAfter = function(lineNumber) {
   line.textContent = line.textContent.concat(nextLine.textContent);
   var removedLine = this.lines_.splice(nextLineNumber, 1)[0];
   this.editor_.removeChild(removedLine);
+};
+
+Editor.prototype.insertNewlineAtCursor = function(moveCursorToStartOfNewLine) {
+  var newLine = document.createElement("div");
+  var currentLine = this.currentLine();
+  var currentLineContent = currentLine.textContent;
+  currentLine.textContent = currentLineContent.substring(0, this.cursorOffset_);
+  newLine.textContent = currentLineContent.substring(this.cursorOffset_);
+  if (newLine.textContent == "")
+    newLine.innerHTML = "&nbsp;";
+  this.editor_.insertBefore(newLine, this.lines_[this.currentLine_ + 1]);
+  console.log("this.lines_.splice(" + this.currentLine_ + 1 + " , 0, newLine);");
+  this.lines_.splice(this.currentLine_ + 1, 0, newLine);
+
+  if (moveCursorToStartOfNewLine) {
+    this.currentLine_++;
+    this.cursorOffset_ = 0;
+  }
+
+  this.setSelectionAndCaretPositionFromOffset();
 }
 
 Editor.prototype.backspace = function() {
