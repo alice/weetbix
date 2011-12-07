@@ -546,15 +546,24 @@ Editor.prototype.deleteSelection = function() {
 };
 
 Editor.prototype.deleteChar = function(direction) {
-  if (this.textLength_ == 0) {
+  if (this.editor_.textContent.length == 0)
     return;
-  }
 
   if (direction == LEFT && this.cursorOffset_ == 0) {
+    if (this.currentLine_ == 0)
+      return;
+
+    this.currentLine_--;
+    this.cursorOffset_ = this.currentLineLength();
+    this.joinLineAfter(this.currentLine_);
     return;
   }
 
-  if (direction == RIGHT && this.cursorOffset_ == this.textLength_) {
+  if (direction == RIGHT && this.cursorOffset_ == this.currentLineLength()) {
+    if (this.currentLine_ == this.lines_.length - 1)
+      return;
+
+    this.joinLineAfter(this.currentLine_);
     return;
   }
 
@@ -564,6 +573,15 @@ Editor.prototype.deleteChar = function(direction) {
   this.deleteRange(this.cursorOffset_, this.cursorOffset_ + 1);
   this.setSelectionAndCaretPositionFromOffset();
 };
+
+Editor.prototype.joinLineAfter = function(lineNumber) {
+  var line = this.lines_[lineNumber];
+  var nextLineNumber = lineNumber + 1;
+  var nextLine = this.lines_[nextLineNumber];
+  line.textContent = line.textContent.concat(nextLine.textContent);
+  var removedLine = this.lines_.splice(nextLineNumber, 1)[0];
+  this.editor_.removeChild(removedLine);
+}
 
 Editor.prototype.backspace = function() {
   this.deleteSelection() || this.deleteChar(LEFT);
