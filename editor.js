@@ -19,6 +19,16 @@ if (!Function.prototype.bind) {
   };
 }
 
+if (!window.getSelection().__proto__.setBaseAndExtent) {
+  Selection.prototype.setBaseAndExtent = function(baseNode, baseOffset, extentNode, extentOffset) {
+    var range = document.createRange();
+    range.setStart(baseNode, baseOffset);
+    range.setEnd(extentNode, extentOffset);
+    this.removeAllRanges();
+    this.addRange(range);
+  }
+}
+
 var OS = {
   MAC: "mac",
   WIN: "win",
@@ -87,6 +97,7 @@ Editor.prototype.caretX_ = 0;
 Editor.prototype.caretY_ = 0;
 Editor.prototype.cursorActive_ = false;
 Editor.prototype.selectionStart_ = -1;
+Editor.prototype.lineHeight = 0;
 
 // Keep track of the listener functions to add/remove on focus/blur
 Editor.prototype.keydownListener_ = 0;
@@ -95,10 +106,18 @@ Editor.prototype.keypressListener_ = 0;
 Editor.prototype.decorate = function(editor, caret) {
   this.editor_ = editor;
 
+  // determine lineHeight
+  if (editor.textContent == "") {
+    editor.innerHTML = "&nbsp;"
+    this.lineHeight = editor.clientHeight;
+    editor.textContent = "";
+  } else {
+    this.lineHeight = editor.clientHeight;
+  }
+
   var lines = editor.textContent.split("\n");
   editor.innerHTML = "";
   for (var i = 0; i < lines.length; i++) {
-//    var content = document.createTextNode(lines[i]);
     var line = document.createElement("div");
     line.textContent = lines[i];
     this.lines_.push(line);
@@ -113,8 +132,8 @@ Editor.prototype.decorate = function(editor, caret) {
     // Only listen for keystrokes when focused.
     this.keydownListener_ = this.cursor.bind(this);
     this.keypressListener_ = this.type.bind(this);
-    this.editor_.addEventListener("keydown", this.keydownListener_);
-    this.editor_.addEventListener("keypress", this.keypressListener_);
+    this.editor_.onkeydown = this.keydownListener_;
+    this.editor_.onkeypress = this.keypressListener_;
 
     this.showCaretTimer_ = setTimeout(this.positionAndShowCaret.bind(this, event), 0);
   }.bind(this));
@@ -123,10 +142,11 @@ Editor.prototype.decorate = function(editor, caret) {
   }.bind(this));
 
   editor.addEventListener("blur", function () {
-    this.editor_.removeEventListener("keydown", this.keydownListener_);
-    this.editor_.removeEventListener("keypress", this.keypressListener_);
-    this.keydownListener_ = 0;
-    this.keypressListener_ = 0;
+    console.log("blur");
+    this.editor_.onkeypress = undefined;
+    this.editor_.onkeydown = undefined;
+    this.keydownListener_ = undefined;
+    this.keypressListener_ = undefined;
     this.hideCaret();
   }.bind(this));
   this.bindKeystrokes();
@@ -152,7 +172,7 @@ Editor.prototype.bindKeystrokes = function() {
   this.bindMappingPreventDefault("backspace", "", this.backspace.bind(this));
   this.bindMapping("delete", "", this.del.bind(this));
   if (this.editor_.getAttribute("aria-multiline"))
-    this.bindMapping("return", "", this.insertNewlineAtCursor.bind(this, true));
+    this.bindMappingPreventDefault("return", "", this.insertNewlineAtCursor.bind(this, true));
   else
     this.bindMapping("return", "", this.editor_.blur.bind(this.editor_));
   this.bindMapping("tab", "", this.editor_.blur.bind(this.editor_));
@@ -233,7 +253,12 @@ Editor.prototype.positionCaret = function() {
 
 Editor.prototype.setSelectionAndCaretPositionFromOffset = function() {
   var selection = window.getSelection();
+  console.log("this.cursorOffset_: " + this.cursorOffset_ + "; this.currentLine_: " + this.currentLine_);
+  console.log("this.currentLine().textContent: " + this.currentLine().textContent);
+  console.trace();
   var textNode = this.currentLine().firstChild;
+
+  console.log("cursorOffset_: " + this.cursorOffset_);
   if (this.selectionStart_ < 0) {
     selection.setBaseAndExtent(textNode, this.cursorOffset_, textNode, this.cursorOffset_);
     this.setCaretPositionFromSelection();
@@ -325,8 +350,8 @@ Editor.prototype.setCaretPositionFromSelection = function(opt_direction) {
       }
     }
   }
-  caretX = x;
-  caretY = rect.top + window.pageYOffset;
+  var caretX = x;
+  var caretY = rect.top + window.pageYOffset;
   this.caret_.style.left = caretX + 'px';
   this.caret_.style.top = caretY + 'px';
   this.showCaret();
@@ -367,6 +392,7 @@ Editor.prototype.cursor = function(event) {
 
   if (this.action_[event.keyCode] && this.action_[event.keyCode][modifiers]) {
     this.action_[event.keyCode][modifiers]();
+    event.stopPropagation();
     return;
   }
 };
@@ -394,6 +420,7 @@ Editor.prototype.moveCursorOneCharacter = function(direction, inSelection) {
       this.cursorOffset_ = 0;
     }
   }
+  console.log("this.cursorOffset_: " + this.cursorOffset_ + "; this.currentLine_: " + this.currentLine_);
   this.setSelectionAndCaretPositionFromOffset();
 };
 
@@ -413,7 +440,12 @@ Editor.prototype.moveCursorOneLine = function(direction) {
   else
     this.currentLine_++;
 
+  console.log("this.cursorOffset_: " + this.cursorOffset_ + "; this.currentLine_: " + this.currentLine_);
   this.cursorOffset_ = Math.min(this.cursorOffset_, this.currentLineLength());
+  console.log("this.cursorOffset_: " + this.cursorOffset_ + "; this.currentLine_: " + this.currentLine_);
+  for (var i = 0; i < this.numLines(); i++)
+    console.log("lines_[" + i + "]: " + this.lines_[i].textContent);
+
   this.setSelectionAndCaretPositionFromOffset();
 };
 
@@ -559,6 +591,7 @@ Editor.prototype.deleteChar = function(direction) {
   if (this.editor_.textContent.length == 0)
     return;
 
+  console.log("this.cursorOffset_ = " + this.cursorOffset_);
   if (direction == LEFT && this.cursorOffset_ == 0) {
     if (this.currentLine_ == 0)
       return;
@@ -566,6 +599,7 @@ Editor.prototype.deleteChar = function(direction) {
     this.currentLine_--;
     this.cursorOffset_ = this.currentLineLength();
     this.joinLineAfter(this.currentLine_);
+    this.setSelectionAndCaretPositionFromOffset();
     return;
   }
 
@@ -574,6 +608,7 @@ Editor.prototype.deleteChar = function(direction) {
       return;
 
     this.joinLineAfter(this.currentLine_);
+    this.setSelectionAndCaretPositionFromOffset();
     return;
   }
 
@@ -599,15 +634,27 @@ Editor.prototype.insertNewlineAtCursor = function(moveCursorToStartOfNewLine) {
   var currentLineContent = currentLine.textContent;
   currentLine.textContent = currentLineContent.substring(0, this.cursorOffset_);
   newLine.textContent = currentLineContent.substring(this.cursorOffset_);
+  newLine.clientHeight = this.lineHeight;
   if (newLine.textContent == "")
-    newLine.innerHTML = "&nbsp;";
-  this.editor_.insertBefore(newLine, this.lines_[this.currentLine_ + 1]);
-  console.log("this.lines_.splice(" + this.currentLine_ + 1 + " , 0, newLine);");
+    newLine.textContent = "asfskdfjh";
+  console.log("editor.innerHTML: " + this.editor_.innerHTML);
+  if (this.currentLine_ == this.numLines())
+    this.editor.appendChild(newLine);
+  else
+    this.editor_.insertBefore(newLine, this.lines_[this.currentLine_ + 1]);
+  console.log("editor.innerHTML: " + this.editor_.innerHTML);
+
+  console.log("this.lines_.splice(" + (this.currentLine_ + 1) + " , 0, newLine);");
   this.lines_.splice(this.currentLine_ + 1, 0, newLine);
+  for (var i = 0; i < this.numLines(); i++)
+    console.log("lines_[" + i + "]: " + this.lines_[i].textContent);
 
   if (moveCursorToStartOfNewLine) {
     this.currentLine_++;
     this.cursorOffset_ = 0;
+    console.log("this.currentLine_ = " + this.currentLine_ + "; this.cursorOffset_ = " + this.cursorOffset_);
+  } else {
+    console.log("this.currentLine_ = " + this.currentLine_ + "; this.cursorOffset_ = " + this.cursorOffset_);
   }
 
   this.setSelectionAndCaretPositionFromOffset();
@@ -622,7 +669,7 @@ Editor.prototype.del = function() {
 };
 
 Editor.prototype.type = function(event) {
-  if (!event.charCode || event.ctrlKey || event.altKey || event.metaKey)
+  if (!event.charCode || event.ctrlKey || event.altKey || event.metaKey || event.keyCode == 13)
     return;
 
   this.deleteSelection();
@@ -632,6 +679,7 @@ Editor.prototype.type = function(event) {
     event.preventDefault();
   } else {
     var char = String.fromCharCode(event.charCode);
+    console.log("charCode: " + event.charCode + "; char: [" + char + "]");
   }
 
   var currentText = this.currentLine().textContent;
