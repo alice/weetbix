@@ -142,7 +142,6 @@ Editor.prototype.decorate = function(editor, caret) {
   }.bind(this));
 
   editor.addEventListener("blur", function () {
-    console.log("blur");
     this.editor_.onkeypress = undefined;
     this.editor_.onkeydown = undefined;
     this.keydownListener_ = undefined;
@@ -253,12 +252,8 @@ Editor.prototype.positionCaret = function() {
 
 Editor.prototype.setSelectionAndCaretPositionFromOffset = function() {
   var selection = window.getSelection();
-  console.log("this.cursorOffset_: " + this.cursorOffset_ + "; this.currentLine_: " + this.currentLine_);
-  console.log("this.currentLine().textContent: " + this.currentLine().textContent);
-  console.trace();
   var textNode = this.currentLine().firstChild;
 
-  console.log("cursorOffset_: " + this.cursorOffset_);
   if (this.selectionStart_ < 0) {
     selection.setBaseAndExtent(textNode, this.cursorOffset_, textNode, this.cursorOffset_);
     this.setCaretPositionFromSelection();
@@ -274,7 +269,7 @@ Editor.prototype.setSelectionAndCaretPositionFromOffset = function() {
 };
 
 Editor.prototype.setCaretPositionFromSelection = function(opt_direction) {
-  var direction = opt_direction || RIGHT;
+  var direction = opt_direction != undefined ? opt_direction : RIGHT;
   var selection = window.getSelection();
 
   // TODO(aboxhall): detect selection outside editor and ignore
@@ -288,7 +283,6 @@ Editor.prototype.setCaretPositionFromSelection = function(opt_direction) {
 
   var range = selection.getRangeAt(0);
   if (!range) {
-    console.log("no range");
     return;
   }
 
@@ -297,7 +291,6 @@ Editor.prototype.setCaretPositionFromSelection = function(opt_direction) {
     // Only selection ranges with non-zero size have a bounding rect
     rect = range.getBoundingClientRect();
     if (!rect) {
-      console.log("no rect");
       return;
     }
 
@@ -420,7 +413,6 @@ Editor.prototype.moveCursorOneCharacter = function(direction, inSelection) {
       this.cursorOffset_ = 0;
     }
   }
-  console.log("this.cursorOffset_: " + this.cursorOffset_ + "; this.currentLine_: " + this.currentLine_);
   this.setSelectionAndCaretPositionFromOffset();
 };
 
@@ -440,11 +432,7 @@ Editor.prototype.moveCursorOneLine = function(direction) {
   else
     this.currentLine_++;
 
-  console.log("this.cursorOffset_: " + this.cursorOffset_ + "; this.currentLine_: " + this.currentLine_);
   this.cursorOffset_ = Math.min(this.cursorOffset_, this.currentLineLength());
-  console.log("this.cursorOffset_: " + this.cursorOffset_ + "; this.currentLine_: " + this.currentLine_);
-  for (var i = 0; i < this.numLines(); i++)
-    console.log("lines_[" + i + "]: " + this.lines_[i].textContent);
 
   this.setSelectionAndCaretPositionFromOffset();
 };
@@ -543,6 +531,7 @@ Editor.prototype.deleteRange = function(start, end) {
     // FIXME(aboxhall)
     this.currentLine().innerHTML = "&nbsp;";
     this.cursorOffset_ = 0;
+    this.currentLine().firstChild.deleteData(start, end - start);
   } else {
     this.currentLine().firstChild.deleteData(start, end - start);
   }
@@ -574,12 +563,14 @@ Editor.prototype.deleteSelection = function() {
   this.selectionStart_ = -1;
   var selection = document.getSelection();
   var range = selection.getRangeAt(0);
-  if (!range || range.collapsed || range.startContainer != this.editor_.firstChild || range.endContainer != this.editor_.firstChild)
+  if (!range || range.collapsed) {
     return false;
+  }
 
-  var textNode = this.editor_.firstChild;
-  if (range.startContainer != textNode || range.endContainer != textNode)
+  var textNode = this.currentLine().firstChild;
+  if (!this.editor_.contains(range.startContainer) || !this.editor_.contains(range.endContainer)) {
     return false;
+  }
 
   this.deleteRange(range.startOffset, range.endOffset);
   this.cursorOffset_ = range.startOffset;
@@ -591,7 +582,6 @@ Editor.prototype.deleteChar = function(direction) {
   if (this.editor_.textContent.length == 0)
     return;
 
-  console.log("this.cursorOffset_ = " + this.cursorOffset_);
   if (direction == LEFT && this.cursorOffset_ == 0) {
     if (this.currentLine_ == 0)
       return;
@@ -637,24 +627,16 @@ Editor.prototype.insertNewlineAtCursor = function(moveCursorToStartOfNewLine) {
   newLine.clientHeight = this.lineHeight;
   if (newLine.textContent == "")
     newLine.textContent = "asfskdfjh";
-  console.log("editor.innerHTML: " + this.editor_.innerHTML);
   if (this.currentLine_ == this.numLines())
     this.editor.appendChild(newLine);
   else
     this.editor_.insertBefore(newLine, this.lines_[this.currentLine_ + 1]);
-  console.log("editor.innerHTML: " + this.editor_.innerHTML);
 
-  console.log("this.lines_.splice(" + (this.currentLine_ + 1) + " , 0, newLine);");
   this.lines_.splice(this.currentLine_ + 1, 0, newLine);
-  for (var i = 0; i < this.numLines(); i++)
-    console.log("lines_[" + i + "]: " + this.lines_[i].textContent);
 
   if (moveCursorToStartOfNewLine) {
     this.currentLine_++;
     this.cursorOffset_ = 0;
-    console.log("this.currentLine_ = " + this.currentLine_ + "; this.cursorOffset_ = " + this.cursorOffset_);
-  } else {
-    console.log("this.currentLine_ = " + this.currentLine_ + "; this.cursorOffset_ = " + this.cursorOffset_);
   }
 
   this.setSelectionAndCaretPositionFromOffset();
@@ -679,7 +661,6 @@ Editor.prototype.type = function(event) {
     event.preventDefault();
   } else {
     var char = String.fromCharCode(event.charCode);
-    console.log("charCode: " + event.charCode + "; char: [" + char + "]");
   }
 
   var currentText = this.currentLine().textContent;
