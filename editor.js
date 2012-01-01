@@ -277,7 +277,6 @@ Editor.prototype.setSelectionAndCaretPositionFromOffset = function() {
 
 Editor.prototype.setCurrentLineFromDiv = function(div) {
   if (this.lines_.indexOf(div) < 0) {
-    console.log(range);
     console.log(div);
     console.trace();
   }
@@ -302,7 +301,7 @@ Editor.prototype.setCaretPositionFromSelection = function(opt_direction) {
     return;
   }
 
-  var x, rect;
+  var x, rect, focusNode;
   if (range.startOffset != range.endOffset || range.startContainer != range.endContainer) {
     // Only selection ranges with non-zero size have a bounding rect
     rect = range.getBoundingClientRect();
@@ -313,60 +312,35 @@ Editor.prototype.setCaretPositionFromSelection = function(opt_direction) {
     if (direction == RIGHT) {
       x = rect.right + window.pageXOffset;
       this.cursorOffset_ = range.endOffset;
-      var div = this.findLineForSelection(range.endContainer);
-      this.setCurrentLineFromDiv(div);
+      focusNode = range.endContainer;
     } else {
       x = rect.left + window.pageXOffset;
       this.cursorOffset_ = range.startOffset;
-      var div = this.findLineForSelection(range.startContainer);
-      this.setCurrentLineFromDiv(div);
+      focusNode = range.startContainer;
     }
   } else {
     // create a new selection which is >0 width and get the position from that
+    var emptyNode = false;
+
     var node = range.startContainer;
-    var pos = range.startOffset;
-    var left = pos;
-    var right = pos;
     if (node.textContent == "") {
-      var emptyNode = true;
+      emptyNode = true;
       node.innerHTML = "&nbsp;";
     }
 
-    var max = node.textContent.length;
-    var newRange = document.createRange();
+    var pos = range.startOffset;
+    rect = this.clientRectForSelectionPos(node, pos);
+    x = rect.left;
 
-    while (left > 0 || right < max) {
-      if (right < max) {
-        right++;
-        newRange.setStart(node, pos);
-        newRange.setEnd(node, right);
-        rect = newRange.getBoundingClientRect();
-        if (rect) {
-          x = rect.left;
-          this.cursorOffset_ = newRange.startOffset;
-          var div = this.findLineForSelection(range.startContainer);
-          this.setCurrentLineFromDiv(div);
-          break;
-        }
-      }
-      if (left > 0) {
-        left--;
-        newRange.setStart(node, left);
-        newRange.setEnd(node, pos);
-        rect = newRange.getBoundingClientRect();
-        if (rect) {
-          x = rect.right;
-          this.cursorOffset_ = newRange.endOffset;
-          var div = this.findLineForSelection(range.endContainer);
-          this.setCurrentLineFromDiv(div);
-          break;
-        }
-      }
-    }
+    this.cursorOffset_ = range.startOffset;
+    focusNode = range.startContainer;
+
+    if (emptyNode)
+      node.innerHTML = "";
   }
 
-  if (emptyNode)
-    node.innerHTML = "";
+  var div = this.findLineDivForSelection(focusNode);
+  this.setCurrentLineFromDiv(div);
 
   var caretX = x;
   var caretY = rect.top + window.pageYOffset;
@@ -375,7 +349,44 @@ Editor.prototype.setCaretPositionFromSelection = function(opt_direction) {
   this.showCaret();
 };
 
-Editor.prototype.findLineForSelection = function(div) {
+Editor.prototype.clientRectForSelectionPos = function(node, pos) {
+  var left = pos;
+  var right = pos;
+  var max = node.textContent.length;
+
+  var x = 0;
+  var newRange = document.createRange();
+
+  while (left > 0 || right < max) {
+    if (right < max) {
+      right++;
+      newRange.setStart(node, pos);
+      newRange.setEnd(node, right);
+      rect = newRange.getBoundingClientRect();
+      if (rect) {
+        rect.right = rect.left;
+        return rect;
+//        return rect.left;
+      }
+    }
+    if (left > 0) {
+      left--;
+      newRange.setStart(node, left);
+      newRange.setEnd(node, pos);
+      rect = newRange.getBoundingClientRect();
+      if (rect) {
+        rect.left = rect.right;
+        return rect;
+//        return rect.right;
+      }
+    }
+  }
+
+  console.trace();
+  return -1;
+};
+
+Editor.prototype.findLineDivForSelection = function(div) {
   if (div.className == "line")
     return div;
 
