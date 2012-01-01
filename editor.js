@@ -310,16 +310,16 @@ Editor.prototype.setCaretPositionFromSelection = function(opt_direction) {
     }
 
     if (direction == RIGHT) {
-      x = rect.right;  // + window.pageXOffset;
+      x = rect.right;
       this.cursorOffset_ = range.endOffset;
       focusNode = range.endContainer;
     } else {
-      x = rect.left;  // + window.pageXOffset;
+      x = rect.left;
       this.cursorOffset_ = range.startOffset;
       focusNode = range.startContainer;
     }
 
-    y = rect.top;  // + window.pageYOffset;
+    y = rect.top;
   } else {
     // create a new selection which is >0 width and get the position from that
     var emptyNode = false;
@@ -360,7 +360,6 @@ Editor.prototype.coordinatesForSelectionPos = function(node, pos) {
 
   while (left > 0 || right < max) {
     if (right < max) {
-      console.log("right < max");
       right++;
       newRange.setStart(node, pos);
       newRange.setEnd(node, right);
@@ -369,11 +368,9 @@ Editor.prototype.coordinatesForSelectionPos = function(node, pos) {
         return {x: rect.left, y: rect.top};
     }
     if (left > 0) {
-      console.log("left < 0");
       left--;
       newRange.setStart(node, left);
       newRange.setEnd(node, pos);
-      console.log(newRange, "[" + newRange.toString() + "]");
       rect = newRange.getBoundingClientRect();
       if (rect)
         return {x: rect.right, y: rect.top};
