@@ -97,7 +97,7 @@ Editor.prototype.caretX_ = 0;
 Editor.prototype.caretY_ = 0;
 Editor.prototype.cursorActive_ = false;
 Editor.prototype.selectionStart_ = -1;
-Editor.prototype.lineHeight = 0;
+Editor.prototype.lineHeight_ = "";
 
 // Keep track of the listener functions to add/remove on focus/blur
 Editor.prototype.keydownListener_ = 0;
@@ -106,23 +106,29 @@ Editor.prototype.keypressListener_ = 0;
 Editor.prototype.decorate = function(editor, caret) {
   this.editor_ = editor;
 
-  // determine lineHeight
-  if (editor.textContent == "") {
-    editor.innerHTML = "&nbsp;"
-    this.lineHeight = editor.clientHeight;
-    editor.textContent = "";
-  } else {
-    this.lineHeight = editor.clientHeight;
-  }
-
   var lines = editor.textContent.split("\n");
   editor.innerHTML = "";
   for (var i = 0; i < lines.length; i++) {
     var line = document.createElement("div");
+    line.className = "line";
     line.textContent = lines[i];
     this.lines_.push(line);
     editor.appendChild(line);
   }
+
+  // determine lineHeight_
+  if (editor.textContent == "") {
+    var tempLine = document.createElement("div");
+    tempLine.innerHTML = "&nbsp;";
+    editor.appendChild(tempLine);
+    this.lineHeight_ = "" + tempLine.clientHeight + "px";
+    editor.removeChild(tempLine);
+  } else {
+    this.lineHeight_ = "" + this.lines_[0].clientHeight + "px";
+  }
+
+  for (var i = 0; i < this.numLines(); i++)
+    this.lines_[i].style.height = this.lineHeight_;
 
   this.caret_ = caret;  // NOTE(aboxhall): create caret element?
 
@@ -186,7 +192,7 @@ Editor.prototype.bindKeystrokes = function() {
     this.bindMappingPreventDefault("delete", "Meta", this.deleteToEndOfLine.bind(this, RIGHT));
     this.bindMapping("a", "Ctrl", this.moveCursorToEndOfLine.bind(this, LEFT));
     this.bindMapping("e", "Ctrl", this.moveCursorToEndOfLine.bind(this, RIGHT));
-    this.bindMapping("k", "Ctrl", this.deleteToEndOfLine.bind(this, RIGHT));
+    this.bindMapping("k", "Ctrl", this.deleteToEndOfLine.bind(this, RIGHT, true));
     this.bindMappingPreventDefault("a", "Meta", this.selectAll.bind(this));
   } else if (os == OS.WIN) {
     this.bindMappingPreventDefault("backspace", "Ctrl", this.deleteOneWord.bind(this, LEFT));
@@ -225,7 +231,7 @@ Editor.prototype.numLines = function() {
 
 Editor.prototype.maxLineNumber = function() {
   return this.numLines() - 1;
-}
+};
 
 Editor.prototype.currentLine = function() {
   return this.lines_[this.currentLine_];
@@ -252,21 +258,31 @@ Editor.prototype.positionCaret = function() {
 
 Editor.prototype.setSelectionAndCaretPositionFromOffset = function() {
   var selection = window.getSelection();
-  var textNode = this.currentLine().firstChild;
+  var currentLine = this.currentLine();
+  var node = currentLine.textContent.length ? currentLine.firstChild : currentLine;
 
   if (this.selectionStart_ < 0) {
-    selection.setBaseAndExtent(textNode, this.cursorOffset_, textNode, this.cursorOffset_);
+    selection.setBaseAndExtent(node, this.cursorOffset_, node, this.cursorOffset_);
     this.setCaretPositionFromSelection();
   } else {
     if (this.selectionStart_ < this.cursorOffset_) {
-      selection.setBaseAndExtent(textNode, this.selectionStart_, textNode, this.cursorOffset_);
+      selection.setBaseAndExtent(node, this.selectionStart_, node, this.cursorOffset_);
       this.setCaretPositionFromSelection(RIGHT);
     } else {
-      selection.setBaseAndExtent(textNode, this.cursorOffset_, textNode, this.selectionStart_);
+      selection.setBaseAndExtent(node, this.cursorOffset_, node, this.selectionStart_);
       this.setCaretPositionFromSelection(LEFT);
     }
   }
 };
+
+Editor.prototype.setCurrentLineFromDiv = function(div) {
+  if (this.lines_.indexOf(div) < 0) {
+    console.log(range);
+    console.log(div);
+    console.trace();
+  }
+  this.currentLine_ = this.lines_.indexOf(div);
+}
 
 Editor.prototype.setCaretPositionFromSelection = function(opt_direction) {
   var direction = opt_direction != undefined ? opt_direction : RIGHT;
@@ -297,13 +313,13 @@ Editor.prototype.setCaretPositionFromSelection = function(opt_direction) {
     if (direction == RIGHT) {
       x = rect.right + window.pageXOffset;
       this.cursorOffset_ = range.endOffset;
-      var div = range.endContainer.parentNode;
-      this.currentLine_ = this.lines_.indexOf(div);
+      var div = this.findLineForSelection(range.endContainer);
+      this.setCurrentLineFromDiv(div);
     } else {
       x = rect.left + window.pageXOffset;
       this.cursorOffset_ = range.startOffset;
-      var div = range.startContainer.parentNode;
-      this.currentLine_ = this.lines_.indexOf(div);
+      var div = this.findLineForSelection(range.startContainer);
+      this.setCurrentLineFromDiv(div);
     }
   } else {
     // create a new selection which is >0 width and get the position from that
@@ -311,7 +327,12 @@ Editor.prototype.setCaretPositionFromSelection = function(opt_direction) {
     var pos = range.startOffset;
     var left = pos;
     var right = pos;
-    var max = node.data.length;
+    if (node.textContent == "") {
+      var emptyNode = true;
+      node.innerHTML = "&nbsp;";
+    }
+
+    var max = node.textContent.length;
     var newRange = document.createRange();
 
     while (left > 0 || right < max) {
@@ -323,8 +344,8 @@ Editor.prototype.setCaretPositionFromSelection = function(opt_direction) {
         if (rect) {
           x = rect.left;
           this.cursorOffset_ = newRange.startOffset;
-          var div = range.startContainer.parentNode;
-          this.currentLine_ = this.lines_.indexOf(div);
+          var div = this.findLineForSelection(range.startContainer);
+          this.setCurrentLineFromDiv(div);
           break;
         }
       }
@@ -336,18 +357,34 @@ Editor.prototype.setCaretPositionFromSelection = function(opt_direction) {
         if (rect) {
           x = rect.right;
           this.cursorOffset_ = newRange.endOffset;
-          var div = range.endContainer.parentNode;
-          this.currentLine_ = this.lines_.indexOf(div);
+          var div = this.findLineForSelection(range.endContainer);
+          this.setCurrentLineFromDiv(div);
           break;
         }
       }
     }
   }
+
+  if (emptyNode)
+    node.innerHTML = "";
+
   var caretX = x;
   var caretY = rect.top + window.pageYOffset;
   this.caret_.style.left = caretX + 'px';
   this.caret_.style.top = caretY + 'px';
   this.showCaret();
+};
+
+Editor.prototype.findLineForSelection = function(div) {
+  if (div.className == "line")
+    return div;
+
+  if (div.className == "editor") {
+    console.trace();
+    return div.firstChild;  // FIXME
+  }
+
+  return div.parentNode;
 };
 
 Editor.prototype.showCaret = function() {
@@ -549,7 +586,16 @@ Editor.prototype.deleteOneWord = function(direction) {
   this.setSelectionAndCaretPositionFromOffset();
 };
 
-Editor.prototype.deleteToEndOfLine = function(direction) {
+Editor.prototype.deleteToEndOfLine = function(direction, removeEmptyLine) {
+  removeEmptyLine = removeEmptyLine || false;
+  if (removeEmptyLine && !this.currentLine().textContent.length) {
+    if (this.currentLine_ < this.numLines() - 1)
+      this.deleteNewline(RIGHT);
+    else
+      this.deleteNewline(LEFT);
+    return;
+  }
+
   if (direction == LEFT) {
     this.deleteRange(0, this.cursorOffset_);
     this.cursorOffset_ = 0;
@@ -578,27 +624,36 @@ Editor.prototype.deleteSelection = function() {
   return true;
 };
 
-Editor.prototype.deleteChar = function(direction) {
-  if (this.editor_.textContent.length == 0)
-    return;
-
-  if (direction == LEFT && this.cursorOffset_ == 0) {
+Editor.prototype.deleteNewline = function(direction) {
+  if (direction == LEFT) {
     if (this.currentLine_ == 0)
-      return;
+        return;
 
     this.currentLine_--;
     this.cursorOffset_ = this.currentLineLength();
     this.joinLineAfter(this.currentLine_);
     this.setSelectionAndCaretPositionFromOffset();
+    return
+  }
+
+  if (this.currentLine_ == this.maxLineNumber())
+    return;
+
+  this.joinLineAfter(this.currentLine_);
+  this.setSelectionAndCaretPositionFromOffset();
+}
+
+Editor.prototype.deleteChar = function(direction) {
+  if (this.editor_.textContent.length == 0)
+    return;
+
+  if (direction == LEFT && this.cursorOffset_ == 0) {
+    this.deleteNewline(LEFT);
     return;
   }
 
   if (direction == RIGHT && this.cursorOffset_ == this.currentLineLength()) {
-    if (this.currentLine_ == this.maxLineNumber())
-      return;
-
-    this.joinLineAfter(this.currentLine_);
-    this.setSelectionAndCaretPositionFromOffset();
+    this.deleteNewline(RIGHT);
     return;
   }
 
@@ -620,13 +675,15 @@ Editor.prototype.joinLineAfter = function(lineNumber) {
 
 Editor.prototype.insertNewlineAtCursor = function(moveCursorToStartOfNewLine) {
   var newLine = document.createElement("div");
+  newLine.className = "line";
+
   var currentLine = this.currentLine();
   var currentLineContent = currentLine.textContent;
   currentLine.textContent = currentLineContent.substring(0, this.cursorOffset_);
   newLine.textContent = currentLineContent.substring(this.cursorOffset_);
-  newLine.clientHeight = this.lineHeight;
+  newLine.style.height = this.lineHeight_;
   if (newLine.textContent == "")
-    newLine.textContent = "asfskdfjh";
+    newLine.appendChild(document.createElement("span"));
   if (this.currentLine_ == this.numLines())
     this.editor.appendChild(newLine);
   else
