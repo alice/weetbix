@@ -45,6 +45,56 @@ else
 
 console.log("os: " + os);
 
+
+Position = function(offset, line) {
+  this.offset = offset != undefined ? offset : -1;
+  this.line = line != undefined ? line : -1;
+};
+
+Position.prototype.offset;
+Position.prototype.line;
+
+Position.prototype.clear = function() {
+  this.offset = -1;
+  this.line = -1;
+};
+
+Position.prototype.equals = function(otherPos) {
+  return this.offset == otherPos.offset && this.line == otherPos.line;
+};
+
+Position.prototype.isValid = function() {
+  return this.offset >= 0 && this.line >= 0;
+}
+
+// Whether this position is after the other position
+Position.prototype.after = function(otherPos) {
+  if (!otherPos || !otherPos.isValid()) {
+    console.warn("undefined/null/invalid otherPos:", otherPos);
+    console.trace();
+    return false;
+  }
+
+  if (this.equals(otherPos))
+    return false;
+
+  if (this.line > otherPos.line)
+    return true;
+
+  return this.offset > otherPos.offset;
+};
+
+Position.prototype.before = function(otherPos) {
+  if (!otherPos || !otherPos.isValid()) {
+    console.warn("undefined/null/invalid otherPos:", otherPos);
+    console.trace();
+    return false;
+  }
+
+  return otherPos.after(this);
+};
+
+
 Editor = function() {};
 
 var LEFT = false;
@@ -96,7 +146,9 @@ Editor.prototype.currentLine_ = 0;
 Editor.prototype.caretX_ = 0;
 Editor.prototype.caretY_ = 0;
 Editor.prototype.cursorActive_ = false;
-Editor.prototype.selectionStart_ = -1;
+Editor.prototype.selectionStart_ = new Position();
+Editor.prototype.minPosition_ = new Position(0, 0);
+Editor.prototype.maxPosition_ = new Position();
 Editor.prototype.lineHeight_ = "";
 
 // Keep track of the listener functions to add/remove on focus/blur
@@ -182,8 +234,9 @@ Editor.prototype.bindKeystrokes = function() {
     this.bindMapping("return", "", this.editor_.blur.bind(this.editor_));
   this.bindMapping("tab", "", this.editor_.blur.bind(this.editor_));
   this.bindMapping("up", "", this.moveCursorOneLine.bind(this, UP));
+  this.bindMappingPreventDefault("up", "Shift", this.moveCursorOneLine.bind(this, UP, true));
   this.bindMapping("down", "", this.moveCursorOneLine.bind(this, DOWN));
-
+  this.bindMappingPreventDefault("down", "Shift", this.moveCursorOneLine.bind(this, DOWN, true));
 
   if (os == OS.MAC) {
     this.bindMappingPreventDefault("backspace", "Alt", this.deleteOneWord.bind(this, LEFT));
@@ -241,6 +294,10 @@ Editor.prototype.currentLineLength = function() {
   return this.currentLine().textContent.length;
 };
 
+Editor.prototype.cursorPosition = function() {
+  return new Position(this.cursorOffset_, this.currentLine_);
+}
+
 Editor.prototype.positionAndShowCaret = function(event) {
   if (event.type == "click")
     this.setCaretPositionFromSelection();
@@ -259,20 +316,26 @@ Editor.prototype.positionCaret = function() {
 Editor.prototype.setSelectionAndCaretPositionFromOffset = function() {
   var selection = window.getSelection();
   var currentLine = this.currentLine();
-  var node = currentLine.textContent.length ? currentLine.firstChild : currentLine;
+  var currentNode = currentLine.textContent.length ? currentLine.firstChild : currentLine;
 
-  if (this.selectionStart_ < 0) {
-    selection.setBaseAndExtent(node, this.cursorOffset_, node, this.cursorOffset_);
+  if (!this.selectionStart_.isValid()) {
+    selection.setBaseAndExtent(currentNode, this.cursorOffset_, currentNode, this.cursorOffset_);
     this.setCaretPositionFromSelection();
   } else {
-    if (this.selectionStart_ < this.cursorOffset_) {
-      selection.setBaseAndExtent(node, this.selectionStart_, node, this.cursorOffset_);
+    selectionStartLine = this.lineForPosition(this.selectionStart_);
+    selectionStartNode = selectionStartLine.textContent.length ? selectionStartLine.firstChild : selectionStartLine;
+    if (this.selectionStart_.before(this.cursorPosition())) {
+      selection.setBaseAndExtent(selectionStartNode, this.selectionStart_.offset, currentNode, this.cursorOffset_);
       this.setCaretPositionFromSelection(RIGHT);
     } else {
-      selection.setBaseAndExtent(node, this.cursorOffset_, node, this.selectionStart_);
+      selection.setBaseAndExtent(currentNode, this.cursorOffset_, selectionStartNode, this.selectionStart_.offset);
       this.setCaretPositionFromSelection(LEFT);
     }
   }
+};
+
+Editor.prototype.lineForPosition = function(pos) {
+  return this.lines_[pos.line];
 };
 
 Editor.prototype.setCurrentLineFromDiv = function(div) {
@@ -417,12 +480,18 @@ Editor.prototype.cursor = function(event) {
   }
 
   // TODO handle selection state portably and robustly
-  if (event.keyCode == KeyCodes["left"] || event.keyCode == KeyCodes["right"] || event.keyCode == KeyCodes["home"] || event.keyCode == KeyCodes["end"] ) {
+  if (event.keyCode == KeyCodes["left"] || event.keyCode == KeyCodes["right"] ||
+      event.keyCode == KeyCodes["home"] || event.keyCode == KeyCodes["end"] ||
+      event.keyCode == KeyCodes["up"] || event.keyCode == KeyCodes["down"]) {
     if (event.shiftKey) {
-      if (this.selectionStart_ < 0)
-        this.selectionStart_ = this.cursorOffset_;
+      if (!this.selectionStart_.isValid()) {
+        this.selectionStart_.offset = this.cursorOffset_;
+        this.selectionStart_.line = this.currentLine_;
+      }
     } else {
-      this.selectionStart_ = -1;
+      if (!this.selectionStart_)
+        console.trace();
+      this.selectionStart_.clear();
     }
   }
 
@@ -595,7 +664,7 @@ Editor.prototype.deleteOneWord = function(direction) {
 Editor.prototype.deleteToEndOfLine = function(direction, removeEmptyLine) {
   removeEmptyLine = removeEmptyLine || false;
   if (removeEmptyLine && !this.currentLine().textContent.length) {
-    if (this.currentLine_ < this.numLines() - 1)
+    if (this.currentLine_ < this.maxLineNumber())
       this.deleteNewline(RIGHT);
     else
       this.deleteNewline(LEFT);
@@ -612,7 +681,7 @@ Editor.prototype.deleteToEndOfLine = function(direction, removeEmptyLine) {
 };
 
 Editor.prototype.deleteSelection = function() {
-  this.selectionStart_ = -1;
+  this.selectionStart_.clear();
   var selection = document.getSelection();
   var range = selection.getRangeAt(0);
   if (!range || range.collapsed) {
@@ -736,6 +805,16 @@ Editor.prototype.type = function(event) {
 
   this.cursorOffset_++;
   this.positionCaret();
+  this.calculateMaxPosition();
 
   event.stopPropagation();
+};
+
+Editor.prototype.calculateMaxPosition = function() {
+  var maxLineNumber = this.maxLineNumber();
+  var lastLine = this.lines_[maxLineNumber];
+  var lastLineLength = lastLine.textContent.length;
+
+  this.maxPosition_.line = maxLineNumber;
+  this.maxPosition_.offset = lastLineLength;
 };
