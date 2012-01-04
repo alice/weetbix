@@ -118,6 +118,13 @@ var KeyCodes = {
   "k": 75
 };
 
+var CursorMovements = {
+  "oneCharacter": 0,
+  "oneWord": 1,
+  "oneLine": 2,
+  "toEndOfLine": 3
+};
+
 function modifierString(ctrlKey, altKey, shiftKey, metaKey) {
   var combo = "";
   if (ctrlKey)
@@ -233,48 +240,47 @@ Editor.prototype.bindKeystrokes = function() {
   else
     this.bindMapping("return", "", this.editor_.blur.bind(this.editor_));
   this.bindMapping("tab", "", this.editor_.blur.bind(this.editor_));
-  this.bindMapping("up", "", this.moveCursorOneLine.bind(this, UP));
-  this.bindMappingPreventDefault("up", "Shift", this.moveCursorOneLine.bind(this, UP, true));
-  this.bindMapping("down", "", this.moveCursorOneLine.bind(this, DOWN));
-  this.bindMappingPreventDefault("down", "Shift", this.moveCursorOneLine.bind(this, DOWN, true));
+  this.bindMapping("up", "", this.moveCursor.bind(this, CursorMovements.oneLine, UP));
+  this.bindMappingPreventDefault("up", "Shift", this.moveCursor.bind(this, CursorMovements.oneLine, UP, true));
+  this.bindMapping("down", "", this.moveCursor.bind(this, CursorMovements.oneLine, DOWN));
+  this.bindMappingPreventDefault("down", "Shift", this.moveCursor.bind(this, CursorMovements.oneLine, DOWN, true));
 
   if (os == OS.MAC) {
-    this.bindMappingPreventDefault("backspace", "Alt", this.deleteOneWord.bind(this, LEFT));
-    this.bindMappingPreventDefault("backspace", "Meta", this.deleteToEndOfLine.bind(this, LEFT));
-    this.bindMapping("delete", "Alt", this.deleteOneWord.bind(this, RIGHT));
-    this.bindMappingPreventDefault("delete", "Meta", this.deleteToEndOfLine.bind(this, RIGHT));
-    this.bindMapping("a", "Ctrl", this.moveCursorToEndOfLine.bind(this, LEFT));
-    this.bindMapping("e", "Ctrl", this.moveCursorToEndOfLine.bind(this, RIGHT));
-    this.bindMapping("k", "Ctrl", this.deleteToEndOfLine.bind(this, RIGHT, true));
+    this.bindMappingPreventDefault("backspace", "Alt", this.delete.bind(this, CursorMovements.oneWord, LEFT));
+    this.bindMappingPreventDefault("backspace", "Meta", this.delete.bind(this, CursorMovements.toEndOfLine, LEFT));
+    this.bindMapping("delete", "Alt", this.delete.bind(this, CursorMovements.oneWord, RIGHT));
+    this.bindMappingPreventDefault("delete", "Meta", this.delete.bind(this, CursorMovements.toEndOfLine, RIGHT));
+    this.bindMapping("a", "Ctrl", this.moveCursor.bind(this, CursorMovements.toEndOfLine, LEFT));
+    this.bindMapping("e", "Ctrl", this.moveCursor.bind(this, CursorMovements.toEndOfLine, RIGHT));
+    this.bindMapping("k", "Ctrl", this.delete.bind(this, CursorMovements.toEndOfLine, RIGHT, true));
     this.bindMappingPreventDefault("a", "Meta", this.selectAll.bind(this));
   } else if (os == OS.WIN) {
-    this.bindMappingPreventDefault("backspace", "Ctrl", this.deleteOneWord.bind(this, LEFT));
-    this.bindMapping("delete", "Ctrl", this.deleteOneWord.bind(this, RIGHT));
+    this.bindMappingPreventDefault("backspace", "Ctrl", this.delete.bind(this, CursorMovements.oneWord, LEFT));
+    this.bindMapping("delete", "Ctrl", this.delete.bind(this, CursorMovements.oneWord, RIGHT));
     this.bindMappingPreventDefault("a", "Ctrl", this.selectAll.bind(this));
-    this.bindMappingPreventDefault("home", "Shift", this.moveCursorToEndOfLine.bind(this, LEFT));
-    this.bindMappingPreventDefault("home", "", this.moveCursorToEndOfLine.bind(this, LEFT));
-    this.bindMappingPreventDefault("end", "Shift", this.moveCursorToEndOfLine.bind(this, RIGHT));
-    this.bindMappingPreventDefault("end", "", this.moveCursorToEndOfLine.bind(this, RIGHT));
+    this.bindMappingPreventDefault("home", "Shift", this.moveCursor.bind(this, CursorMovements.toEndOfLine, LEFT));
+    this.bindMappingPreventDefault("home", "", this.moveCursor.bind(this, CursorMovements.toEndOfLine, LEFT));
+    this.bindMappingPreventDefault("end", "Shift", this.moveCursor.bind(this, CursorMovements.toEndOfLine, RIGHT));
+    this.bindMappingPreventDefault("end", "", this.moveCursor.bind(this, CursorMovements.toEndOfLine, RIGHT));
   }
 
   this.mapLeftRight("left", LEFT);
   this.mapLeftRight("right", RIGHT);
 };
 
-Editor.prototype.mapLeftRight = function(key, dir) {
-  var direction = dir;
-  this.bindMapping(key, "", this.moveCursorOneCharacter.bind(this, direction, false));
-  this.bindMappingPreventDefault(key, "Shift", this.moveCursorOneCharacter.bind(this, direction, true));
+Editor.prototype.mapLeftRight = function(key, direction) {
+  this.bindMapping(key, "", this.moveCursor.bind(this, CursorMovements.oneCharacter, direction, false));
+  this.bindMappingPreventDefault(key, "Shift", this.moveCursor.bind(this, CursorMovements.oneCharacter, direction, true));
   if (os == OS.MAC) {
-    this.bindMapping(key, "Ctrl", this.moveCursorToEndOfLine.bind(this, direction));
-    this.bindMappingPreventDefault(key, "Meta", this.moveCursorToEndOfLine.bind(this, direction));
-    this.bindMapping(key, "Alt", this.moveCursorOneWord.bind(this, direction));
-    this.bindMappingPreventDefault(key, "CtrlShift", this.moveCursorToEndOfLine.bind(this, direction));
-    this.bindMappingPreventDefault(key, "ShiftMeta", this.moveCursorToEndOfLine.bind(this, direction));
-    this.bindMappingPreventDefault(key, "AltShift", this.moveCursorOneWord.bind(this, direction));
+    this.bindMapping(key, "Ctrl", this.moveCursor.bind(this, CursorMovements.toEndOfLine, direction));
+    this.bindMappingPreventDefault(key, "Meta", this.moveCursor.bind(this, CursorMovements.toEndOfLine, direction));
+    this.bindMapping(key, "Alt", this.moveCursor.bind(this, CursorMovements.oneWord, direction));
+    this.bindMappingPreventDefault(key, "CtrlShift", this.moveCursor.bind(this, CursorMovements.toEndOfLine, direction));
+    this.bindMappingPreventDefault(key, "ShiftMeta", this.moveCursor.bind(this, CursorMovements.toEndOfLine, direction));
+    this.bindMappingPreventDefault(key, "AltShift", this.moveCursor.bind(this, CursorMovements.oneWord, direction));
   } else if (os == OS.WIN) {
-    this.bindMapping(key, "Ctrl", this.moveCursorOneWord.bind(this, direction));
-    this.bindMappingPreventDefault(key, "CtrlShift", this.moveCursorOneWord.bind(this, direction));
+    this.bindMapping(key, "Ctrl", this.moveCursor.bind(this, CursorMovements.oneWord, direction));
+    this.bindMappingPreventDefault(key, "CtrlShift", this.moveCursor.bind(this, CursorMovements.oneWord, direction));
   }
 };
 
@@ -479,22 +485,6 @@ Editor.prototype.cursor = function(event) {
     event.preventDefault();
   }
 
-  // TODO handle selection state portably and robustly
-  if (event.keyCode == KeyCodes["left"] || event.keyCode == KeyCodes["right"] ||
-      event.keyCode == KeyCodes["home"] || event.keyCode == KeyCodes["end"] ||
-      event.keyCode == KeyCodes["up"] || event.keyCode == KeyCodes["down"]) {
-    if (event.shiftKey) {
-      if (!this.selectionStart_.isValid()) {
-        this.selectionStart_.offset = this.cursorOffset_;
-        this.selectionStart_.line = this.currentLine_;
-      }
-    } else {
-      if (!this.selectionStart_)
-        console.trace();
-      this.selectionStart_.clear();
-    }
-  }
-
   if (this.action_[event.keyCode] && this.action_[event.keyCode][modifiers]) {
     this.action_[event.keyCode][modifiers]();
     event.stopPropagation();
@@ -509,7 +499,39 @@ Editor.prototype.selectAll = function() {
   this.setCaretPositionFromSelection(RIGHT);
 };
 
-Editor.prototype.moveCursorOneCharacter = function(direction, inSelection) {
+Editor.prototype.moveCursor = function(movement, direction, inSelection) {
+  if (inSelection) {
+    if (!this.selectionStart_.isValid()) {
+      this.selectionStart_.offset = this.cursorOffset_;
+      this.selectionStart_.line = this.currentLine_;
+    }
+  } else {
+    if (!this.selectionStart_)
+      console.trace();
+    this.selectionStart_.clear();
+  }
+
+  switch (movement) {
+  case CursorMovements.oneCharacter:
+    this.moveCursorOneCharacter(direction);
+    break;
+  case CursorMovements.oneWord:
+    this.moveCursorOneWord(direction);
+    break;
+  case CursorMovements.oneLine:
+    this.moveCursorOneLine(direction);
+    break;
+  case CursorMovements.toEndOfLine:
+    this.moveCursorToEndOfLine(direction);
+    break;
+  default:
+    console.log("movement:", movement, "direction:", direction, "inSelection:", inSelection);
+    console.trace();
+    break;
+  }
+};
+
+Editor.prototype.moveCursorOneCharacter = function(direction) {
   if (direction == LEFT) {
     if (this.cursorOffset_ > 0) {
       this.cursorOffset_--;
@@ -648,6 +670,23 @@ Editor.prototype.deleteRange = function(start, end) {
     this.currentLine().firstChild.deleteData(start, end - start);
   }
 };
+
+Editor.prototype.delete = function(movement, direction, deleteEmptyLine) {
+  switch (movement) {
+  case CursorMovements.oneCharacter:
+    this.deleteChar(direction);
+    break;
+  case CursorMovements.oneWord:
+    this.deleteOneWord(direction);
+    break;
+  case CursorMovements.toEndOfLine:
+    this.deleteToEndOfLine(direction, deleteEmptyLine);
+    break;
+  default:
+    console.trace();
+    break;
+  }
+}
 
 Editor.prototype.deleteOneWord = function(direction) {
   if (direction == LEFT) {
